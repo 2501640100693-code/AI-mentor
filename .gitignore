@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+app.db
+chroma_data/
+*.onnx
+*.onnx.json
+node_modules/
+.next/
+frontend/.env.local
+*.log
+.env

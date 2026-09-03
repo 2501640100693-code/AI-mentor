@@ -96,6 +96,16 @@ DEMO_MISCONCEPTIONS = [
         "wrong_answer_pattern": "AC current always flows in one direction",
         "description": "AC reverses direction periodically; DC is unidirectional.",
     },
+    {
+        "concept_id": "ohms_law",
+        "wrong_answer_pattern": "resistance has no effect if voltage is high",
+        "description": "Ohm's law always relates V, I, and R; high voltage does not cancel resistance.",
+    },
+    {
+        "concept_id": "current",
+        "wrong_answer_pattern": "more voltage always means more power regardless of current",
+        "description": "Power depends on both voltage and current (P = VI).",
+    },
 ]
 
 
@@ -110,14 +120,28 @@ def _misconception_collection():
 
 
 def seed_demo_misconceptions() -> None:
+    col = _misconception_collection()
     with get_db() as db:
         existing = db.query(Misconception).count()
-        if existing >= 10:
+        try:
+            chroma_count = col.count()
+        except Exception:
+            chroma_count = 0
+        if existing >= 10 and chroma_count >= 10:
             return
         model = get_embedder()
-        col = _misconception_collection()
         texts, ids, metas = [], [], []
         for item in DEMO_MISCONCEPTIONS:
+            already = (
+                db.query(Misconception)
+                .filter_by(
+                    concept_id=item["concept_id"],
+                    wrong_answer_pattern=item["wrong_answer_pattern"],
+                )
+                .first()
+            )
+            if already:
+                continue
             mid = str(uuid.uuid4())
             db.add(
                 Misconception(
@@ -131,29 +155,47 @@ def seed_demo_misconceptions() -> None:
             texts.append(item["wrong_answer_pattern"])
             ids.append(mid)
             metas.append({"concept_id": item["concept_id"]})
-        embeddings = model.encode(texts, convert_to_numpy=True).tolist()
-        col.add(ids=ids, embeddings=embeddings, documents=texts, metadatas=metas)
+        if texts:
+            embeddings = model.encode(texts, convert_to_numpy=True).tolist()
+            col.add(ids=ids, embeddings=embeddings, documents=texts, metadatas=metas)
 
 
-def diagnose_misconception(student_answer: str, concept_id: str) -> Optional[str]:
+def diagnose_misconception(
+    student_answer: str,
+    concept_id: str,
+    topic: str | None = None,
+) -> Optional[str]:
     seed_demo_misconceptions()
     model = get_embedder()
     q = model.encode([student_answer], convert_to_numpy=True).tolist()
     col = _misconception_collection()
-    try:
-        result = col.query(
-            query_embeddings=q,
-            where={"concept_id": {"$eq": concept_id}},
-            n_results=1,
-            include=["distances", "metadatas"],
-        )
-    except Exception:
-        result = col.query(query_embeddings=q, n_results=1, include=["distances"])
+
+    def _query():
+        try:
+            return col.query(
+                query_embeddings=q,
+                where={"concept_id": {"$eq": concept_id}},
+                n_results=1,
+                include=["distances", "metadatas"],
+            )
+        except Exception:
+            return col.query(
+                query_embeddings=q, n_results=1, include=["distances", "metadatas"]
+            )
+
+    result = _query()
     ids = (result.get("ids") or [[]])[0]
     distances = (result.get("distances") or [[]])[0]
+
+    # Cold-start: no bank entries for this concept yet
     if not ids:
-        return None
-    # Chroma distances are typically L2; convert roughly to similarity
+        generate_and_cache_misconceptions(topic or concept_id, concept_id)
+        result = _query()
+        ids = (result.get("ids") or [[]])[0]
+        distances = (result.get("distances") or [[]])[0]
+        if not ids:
+            return None
+
     dist = distances[0] if distances else 1.0
     # cosine space: Chroma distance is 1 - cosine similarity
     similarity = 1.0 - float(dist)

@@ -397,8 +397,11 @@ def answer(body: AnswerBody):
         is_correct, feedback = grade_answer(question, body.student_answer)
         misconception_id = None
         if not is_correct:
+            lesson = db.query(Lesson).filter_by(lesson_id=body.lesson_id).first()
             misconception_id = diagnose_misconception(
-                body.student_answer, body.concept_id
+                body.student_answer,
+                body.concept_id,
+                topic=lesson.topic if lesson else None,
             )
         row = (
             db.query(MasteryState)

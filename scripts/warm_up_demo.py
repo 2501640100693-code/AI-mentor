@@ -47,7 +47,7 @@ def main() -> None:
         )
         turn.raise_for_status()
         script = turn.json().get("script_text", "Welcome to the lesson.")
-        httpx.post(
+        seg = httpx.post(
             f"{base}/api/video/render-broadcast",
             json={
                 "script_text": script,
@@ -57,8 +57,17 @@ def main() -> None:
             },
             timeout=60.0,
         )
+        seg.raise_for_status()
         n += 1
-    print(f"Warmed up: {n} video segments cached, document ingested: {document_id}")
+
+    status = httpx.get(f"{base}/api/status", timeout=30.0).json()
+
+    print("\n===== WARM-UP SUMMARY =====")
+    print(f"document_id : {document_id}")
+    print(f"lesson_id   : {lesson_id}")
+    print(f"segments    : {n} broadcast segments cached")
+    print(f"llm_tier    : {status.get('llm_tier')}")
+    print("Ready to demo.")
 
 
 if __name__ == "__main__":

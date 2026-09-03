@@ -109,14 +109,29 @@ def _has_cycle(concepts: list[dict]) -> bool:
 
 
 def _validate_dag(concepts: list[dict]) -> list[dict]:
-    ids = {c["concept_id"] for c in concepts}
+    ids = {str(c.get("concept_id", "")) for c in concepts if c.get("concept_id") is not None}
     cleaned = []
     for c in concepts:
-        prereqs = [p for p in c.get("prerequisite_ids", []) if p in ids]
+        if not c.get("concept_id"):
+            continue
+        prereqs = [
+            str(p) for p in c.get("prerequisite_ids", []) if str(p) in ids
+        ]
         item = dict(c)
+        item["concept_id"] = str(c["concept_id"])
+        item["name"] = str(c.get("name") or item["concept_id"])
         item["prerequisite_ids"] = prereqs
-        item.setdefault("estimated_minutes", 10)
-        item.setdefault("target_depth", "beginner")
+        depth = c.get("target_depth", "beginner")
+        # LLMs sometimes return numeric depth levels — coerce to string labels
+        if isinstance(depth, (int, float)):
+            depth = {1: "beginner", 2: "intermediate", 3: "advanced"}.get(
+                int(depth), str(depth)
+            )
+        item["target_depth"] = str(depth or "beginner")
+        try:
+            item["estimated_minutes"] = int(c.get("estimated_minutes") or 10)
+        except (TypeError, ValueError):
+            item["estimated_minutes"] = 10
         cleaned.append(item)
     return cleaned
 
@@ -125,8 +140,9 @@ def generate_concept_dag(topic_or_text: str, learner_level: str) -> list[dict]:
     prompt = (
         f"Create a concept dependency graph for teaching '{topic_or_text}' "
         f"to a {learner_level} learner. Return ONLY a JSON array of objects with keys "
-        "concept_id, name, prerequisite_ids, target_depth, estimated_minutes. "
-        "No cycles. 3-6 concepts."
+        "concept_id (string), name (string), prerequisite_ids (string array), "
+        "target_depth (string: beginner|intermediate|advanced), "
+        "estimated_minutes (integer). No cycles. 3-6 concepts."
     )
     raw = call_llm(prompt)
     concepts = None

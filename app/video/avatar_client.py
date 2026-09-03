@@ -126,23 +126,30 @@ def open_reactive_session(lesson_id: str) -> dict:
             "conversation_id": f"mock-{lesson_id}",
             "conversation_url": "",
         }
-    persona_id = _ensure_persona()
-    api_key = os.getenv("TAVUS_API_KEY", "")
-    r = httpx.post(
-        "https://tavusapi.com/v2/conversations",
-        headers={"x-api-key": api_key, "Content-Type": "application/json"},
-        json={
-            "persona_id": persona_id,
-            "conversation_name": f"lesson-{lesson_id}",
-        },
-        timeout=30.0,
-    )
-    r.raise_for_status()
-    data = r.json()
-    return {
-        "conversation_id": data.get("conversation_id", ""),
-        "conversation_url": data.get("conversation_url", ""),
-    }
+    try:
+        persona_id = _ensure_persona()
+        api_key = os.getenv("TAVUS_API_KEY", "")
+        r = httpx.post(
+            "https://tavusapi.com/v2/conversations",
+            headers={"x-api-key": api_key, "Content-Type": "application/json"},
+            json={
+                "persona_id": persona_id,
+                "conversation_name": f"lesson-{lesson_id}",
+            },
+            timeout=30.0,
+        )
+        r.raise_for_status()
+        data = r.json()
+        return {
+            "conversation_id": data.get("conversation_id", ""),
+            "conversation_url": data.get("conversation_url", ""),
+        }
+    except Exception as e:
+        print(f"[Tavus] open_reactive_session failed, using mock session: {e}")
+        return {
+            "conversation_id": f"mock-{lesson_id}",
+            "conversation_url": "",
+        }
 
 
 def _wav_to_pcm_16khz(audio_bytes: bytes) -> bytes:

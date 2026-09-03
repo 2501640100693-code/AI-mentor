@@ -1,0 +1,56 @@
+PROJECT: AI Teacher — personalized adaptive video lessons with talking avatar,
+RAG grounding, BKT mastery, misconception detection, subject-aware visual panel,
+multilingual TTS, 3D animated frontend.
+
+PLATFORM: Windows 11 native — PowerShell terminal. No WSL2, no Ubuntu, no apt, no sudo.
+
+SHELL RULES:
+- Use `python` not `python3.11`
+- Use venv: python -m venv .venv then .\.venv\Scripts\Activate.ps1 — never --break-system-packages
+- Use `;` not `&&` in PowerShell (or run commands separately)
+- Paths: C:\Users\ravij\ai mentor or relative paths — not ~/ai-teacher
+- Verify with Select-String not grep; Invoke-RestMethod not curl (curl.exe also OK on Win11)
+- Create files with Write/New-Item not bash heredocs or touch
+
+STACK (locked):
+- Backend: Python 3.11 + FastAPI modular monolith (brain/ + video/ function calls, NOT localhost HTTP)
+- Frontend: Next.js latest (App Router) + TypeScript + Tailwind
+  + three + @react-three/fiber + @react-three/drei (3D backgrounds, score rings)
+  + framer-motion (page/element animations)
+  Glassmorphism dark theme — highly attractive demo UI, not plain forms.
+  "use client" FIRST LINE on any file using hooks, sessionStorage, AudioContext,
+  Daily.co, Three.js, or Framer Motion.
+- DB: SQLite SQLAlchemy WAL. Vector: ChromaDB >=1.0.0 local ./chroma_data
+- Embeddings: SentenceTransformer("all-MiniLM-L6-v2", device="cpu") — REQUIRED
+
+ENV (.env.example must include):
+  GEMINI_API_KEY, GEMINI_MODEL=gemini-2.5-flash-lite, ANTHROPIC_API_KEY (optional)
+  TAVUS_*, SARVAM_API_KEY, LOCAL_LLM_MODEL, PIPER_VOICE_PATH
+  TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
+  MOCK_LLM, MOCK_VIDEO, FORCE_FALLBACK, FRONTEND_URL
+
+LLM call_llm(): Gemini -> Ollama (generate not chat) -> Claude (optional)
+  GEMINI model from GEMINI_MODEL env. Claude: filter content blocks type=="text"
+  LAST_TIER_USED module var for /api/status. Never raise to caller.
+
+TTS synthesize_speech(): Sarvam REST base64 decode, speaker="shubh" -> Piper -> pyttsx3
+
+Avatar: Tavus broadcast /v2/videos; CVI persona (echo) once -> conversation per lesson
+
+ELEVEN PYDANTIC MODELS: ConceptNode, QuestionBlock (+options), TeachingTurn (+visual_content),
+VideoSegment, StudentMasteryState, LearningPath, StudentProfile,
+LessonSession (+document_id), MisconceptionEntry, ReportCard, DaySchedule, StudyPlan
+
+TEN SQL TABLES + flashcards. WAL mode on connect.
+
+EXCEPTION HANDLERS: separate HTTPException, RequestValidationError, Exception — not one blanket.
+
+ASYNC SAFETY: Tavus poll routes plain def OR async httpx — never sync 5min block in async def.
+
+CHROMADB smoke test after pip install.
+
+SELF-CHECK: run every phase Verify checklist, report real output.
+
+DO NOT: google.generativeai, ollama.chat(), chromadb<1.0, create-next-app@14,
+  is_multi_day_budget(), Sarvam as WebSocket, recreate Tavus persona per lesson,
+  skip __init__.py, let embeddings use GPU.

@@ -1,0 +1,11 @@
+Ohm's Law
+
+Voltage is the electric potential difference that pushes charge through a circuit.
+
+Current is the flow of electric charge, measured in amperes.
+
+Resistance opposes current. Ohm's law states V = I × R.
+
+Chapter two. Series circuits keep current the same through each component.
+
+Parallel circuits share the same voltage across branches.

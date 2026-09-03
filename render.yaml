@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: ai-teacher
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: MOCK_LLM
+        value: "false"
+      - key: MOCK_VIDEO
+        value: "false"
+      - key: FORCE_FALLBACK
+        value: "false"
+      - key: GEMINI_MODEL
+        value: "gemini-2.5-flash-lite"
+      - key: LOCAL_LLM_MODEL
+        value: "qwen2.5:7b"
+      - key: FRONTEND_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: TAVUS_API_KEY
+        sync: false
+      - key: TAVUS_AVATAR_ID
+        sync: false
+      - key: TAVUS_VOICE_ID
+        sync: false
+      - key: TAVUS_PERSONA_ID
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: DID_API_KEY
+        sync: false
+      - key: PIPER_VOICE_PATH
+        value: "en_US-lessac-medium.onnx"
+      - key: TESSERACT_CMD
+        value: ""

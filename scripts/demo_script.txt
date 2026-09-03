@@ -1,0 +1,22 @@
+AI Teacher — 5 minute demo script (timer)
+
+0:00  Open http://localhost:3000 — onboard 3D particles + glass form.
+      Fill name, beginner, Ohm's Law, 20 minutes, prerendered. Continue.
+
+0:45  Upload: either drop scripts/demo.txt or keep topic "Ohm's Law".
+      Generate diagnostic & plan. Show concept graph + Start Lesson
+      (this click unlocks audio — do not skip).
+
+1:30  Player: two-panel cockpit. Point at mastery bars, Cloud/Local badge,
+      visual panel (never blank). Play one teaching turn.
+
+2:30  When a question appears, give a WRONG short answer:
+      "voltage is the same as current"
+      Show misconception feedback + mastery drop (or Adapt stage).
+
+3:30  Answer correctly next, then Finish → Report 3D score ring.
+
+4:15  Optional: Flashcards 3D flip. Optional FORCE_FALLBACK=true restart
+      to show "Local AI (RTX 5050)" badge.
+
+5:00  Stop. Judges should remember the player, not the form.

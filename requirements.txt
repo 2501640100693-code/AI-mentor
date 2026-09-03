@@ -1,0 +1,24 @@
+# Windows-native backend. chromadb>=1.0.0 is required (not 0.x).
+# Pins are lower-bounds so pip can resolve chromadb's fastapi/httpx constraints.
+fastapi>=0.115.9
+uvicorn[standard]>=0.32.0
+sqlalchemy>=2.0.35
+pydantic>=2.9.2
+chromadb>=1.0.0
+sentence-transformers>=3.2.1
+pytesseract>=0.3.13
+pymupdf>=1.24.11
+python-dotenv>=1.0.1
+google-genai>=1.5.0,<2.0.0
+anthropic>=0.45.0
+ollama>=0.4.0
+pyttsx3>=2.90
+tenacity>=9.0.0
+httpx>=0.28.1
+python-docx>=1.1.2
+python-pptx>=1.0.2
+numpy>=1.26.0
+pillow>=10.0.0
+sarvamai
+python-multipart>=0.0.12
+pytest>=8.3.3

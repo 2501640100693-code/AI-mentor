@@ -16,7 +16,7 @@ def _call_gemini(prompt: str, system: str) -> str:
     if not key:
         raise ValueError("GEMINI_API_KEY not set")
     client = genai.Client(api_key=key)
-    model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+    model_name = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
     response = client.models.generate_content(
         model=model_name,
         contents=prompt,

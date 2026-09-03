@@ -14,7 +14,7 @@ services:
       - key: FORCE_FALLBACK
         value: "false"
       - key: GEMINI_MODEL
-        value: "gemini-2.5-flash-lite"
+        value: "gemini-3.5-flash-lite"
       - key: LOCAL_LLM_MODEL
         value: "qwen2.5:7b"
       - key: FRONTEND_URL

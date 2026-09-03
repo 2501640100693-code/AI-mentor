@@ -53,7 +53,9 @@ cd frontend
 npm run dev
 ```
 
-Open http://localhost:3000 (redirects to `/onboard`).
+## Credentials
+
+Copy `.env.example` to `.env`. Gemini, Sarvam, and Tavus API keys go there. Live talking-replica video also needs `TAVUS_AVATAR_ID` (and optionally `TAVUS_PERSONA_ID` after the first CVI persona create). Anthropic is optional — omitted keys skip that LLM tier. Leave `MOCK_LLM=true` / `MOCK_VIDEO=true` until you want live Gemini/Tavus/Sarvam.
 
 ## Mock flags
 
@@ -76,7 +78,7 @@ Open http://localhost:3000 (redirects to `/onboard`).
 
 ## Third-party services
 
-- LLM: Gemini (`GEMINI_MODEL`, default `gemini-2.5-flash-lite`), Ollama local, optional Claude
+- LLM: Gemini (`GEMINI_MODEL`, default `gemini-3.5-flash-lite`), Ollama local, optional Claude
 - Embeddings: sentence-transformers all-MiniLM-L6-v2 **CPU only**
 - Vector DB: ChromaDB local
 - Avatar: Tavus `/v2/videos` + CVI echo persona → conversation
@@ -99,7 +101,7 @@ Open http://localhost:3000 (redirects to `/onboard`).
 
 - Misconception bank is deep for electricity / Ohm's Law; other topics use live LLM-generated entries.
 - PARTIALLY_CORRECT answers count as incorrect for BKT (binary observation).
-- `gemini-2.5-flash-lite` shutdown is no earlier than Oct 16, 2026 — swap via `GEMINI_MODEL`.
+- `gemini-2.5-flash-lite` is unavailable to new Gemini keys; this repo defaults to `gemini-3.5-flash-lite` via `GEMINI_MODEL`.
 - Render free disk is ephemeral.
 - No authentication; `student_id` is a session UUID.
 - Deployed OCR may need a Tesseract buildpack; local Windows uses `TESSERACT_CMD`.

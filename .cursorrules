@@ -24,7 +24,7 @@ STACK (locked):
 - Embeddings: SentenceTransformer("all-MiniLM-L6-v2", device="cpu") — REQUIRED
 
 ENV (.env.example must include):
-  GEMINI_API_KEY, GEMINI_MODEL=gemini-2.5-flash-lite, ANTHROPIC_API_KEY (optional)
+  GEMINI_API_KEY, GEMINI_MODEL=gemini-3.5-flash-lite, ANTHROPIC_API_KEY (optional)
   TAVUS_*, SARVAM_API_KEY, LOCAL_LLM_MODEL, PIPER_VOICE_PATH
   TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
   MOCK_LLM, MOCK_VIDEO, FORCE_FALLBACK, FRONTEND_URL

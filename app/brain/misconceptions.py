@@ -103,7 +103,10 @@ def _misconception_collection():
     import chromadb
 
     client = chromadb.PersistentClient(path="./chroma_data")
-    return client.get_or_create_collection(name="misconceptions")
+    return client.get_or_create_collection(
+        name="misconceptions_cos",
+        metadata={"hnsw:space": "cosine"},
+    )
 
 
 def seed_demo_misconceptions() -> None:
@@ -152,7 +155,8 @@ def diagnose_misconception(student_answer: str, concept_id: str) -> Optional[str
         return None
     # Chroma distances are typically L2; convert roughly to similarity
     dist = distances[0] if distances else 1.0
-    similarity = 1.0 / (1.0 + dist)
+    # cosine space: Chroma distance is 1 - cosine similarity
+    similarity = 1.0 - float(dist)
     if similarity >= 0.70:
         return ids[0]
     return None

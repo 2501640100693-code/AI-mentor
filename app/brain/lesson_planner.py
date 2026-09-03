@@ -3,7 +3,9 @@ import os
 import re
 from collections import defaultdict, deque
 
+from app.brain.visual_generator import generate_visual
 from app.llm import call_llm
+from app.schemas import TeachingTurn
 
 
 def parse_time_budget(budget_input: str) -> tuple[int, bool]:
@@ -219,3 +221,23 @@ def choose_visual_type(concept_name: str, topic: str, level: str) -> str:
     ).strip().lower()
     valid = {"diagram", "graph", "code", "timeline", "equation", "concept_map", "none"}
     return raw if raw in valid else "none"
+
+
+def set_turn_visual_content(
+    turn: TeachingTurn,
+    concept: str,
+    level: str,
+    subject_hint: str = "",
+) -> TeachingTurn:
+    """Populate turn.visual_content via generate_visual when visual_type != none."""
+    if turn.visual_type == "none":
+        turn.visual_content = ""
+        return turn
+    turn.visual_content = generate_visual(
+        turn.visual_type,
+        concept,
+        turn.visual_reasoning or "",
+        level,
+        subject_hint,
+    )
+    return turn

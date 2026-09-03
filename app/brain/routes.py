@@ -17,6 +17,7 @@ from app.brain.lesson_planner import (
     STAGE_ORDER,
     choose_visual_type,
     generate_concept_dag,
+    set_turn_visual_content,
 )
 from app.brain.misconceptions import diagnose_misconception
 from app.brain.visual_generator import generate_visual
@@ -334,10 +335,7 @@ def teaching_turn_next(body: NextTurnBody):
             visual_type=visual_type,  # type: ignore[arg-type]
             visual_reasoning=visual_reasoning,
         )
-        if visual_type != "none":
-            turn.visual_content = generate_visual(
-                visual_type, current_concept_name, visual_reasoning, level, topic
-            )
+        set_turn_visual_content(turn, current_concept_name, level, topic)
         if current_stage in ("question", "evaluate"):
             q_type = random.choice(
                 ["mcq", "short_answer", "conceptual", "explain_in_own_words"]

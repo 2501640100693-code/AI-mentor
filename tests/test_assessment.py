@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from app.brain.assessment import grade_answer
+from app.brain.assessment import grade_answer, generate_report_card
 from app.schemas import QuestionBlock
 
 
@@ -33,3 +33,10 @@ def test_short_answer_paraphrase_counts_correct(mock_llm):
     assert ok is True
     assert "different" in feedback.lower() or "same" in feedback.lower() or feedback
     mock_llm.assert_called_once()
+
+
+def test_report_card_empty_lesson():
+    card = generate_report_card("no-such-student-phase7", "no-such-lesson-phase7")
+    assert card.score_percent == 0.0
+    assert card.strong_areas == []
+    assert card.weak_areas == []

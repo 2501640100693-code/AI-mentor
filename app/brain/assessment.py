@@ -54,7 +54,11 @@ FEEDBACK: <one sentence>"""
 
 def generate_report_card(student_id: str, lesson_id: str) -> ReportCard:
     with get_db() as db:
-        rows = db.query(MasteryState).filter_by(student_id=student_id).all()
+        lesson_concepts = db.query(Concept).filter_by(lesson_id=lesson_id).all()
+        names = {c.concept_id: c.name for c in lesson_concepts}
+        concept_ids = set(names.keys())
+        all_rows = db.query(MasteryState).filter_by(student_id=student_id).all()
+        rows = [r for r in all_rows if r.concept_id in concept_ids] if concept_ids else all_rows
         if not rows:
             return ReportCard(
                 student_id=student_id,
@@ -64,10 +68,6 @@ def generate_report_card(student_id: str, lesson_id: str) -> ReportCard:
                 weak_areas=[],
                 recommendation="No assessment data yet for this lesson.",
             )
-        names = {
-            c.concept_id: c.name
-            for c in db.query(Concept).filter_by(lesson_id=lesson_id).all()
-        }
         score_percent = (sum(r.p_know for r in rows) / len(rows)) * 100
         strong_areas = [
             names.get(r.concept_id, r.concept_id)

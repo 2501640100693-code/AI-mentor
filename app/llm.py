@@ -6,7 +6,6 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 load_dotenv()
 
 LAST_TIER_USED: str = "none"
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
 
 def _call_gemini(prompt: str, system: str) -> str:
@@ -17,8 +16,9 @@ def _call_gemini(prompt: str, system: str) -> str:
     if not key:
         raise ValueError("GEMINI_API_KEY not set")
     client = genai.Client(api_key=key)
+    model_name = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
     response = client.models.generate_content(
-        model=GEMINI_MODEL,
+        model=model_name,
         contents=prompt,
         config=genai_types.GenerateContentConfig(
             system_instruction=system or "",

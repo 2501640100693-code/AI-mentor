@@ -2,15 +2,13 @@ import os
 import uuid
 from pathlib import Path
 
+import pytesseract
 from dotenv import load_dotenv
 
 load_dotenv()
 
-_cmd = os.getenv("TESSERACT_CMD")
-if _cmd:
-    import pytesseract
-
-    pytesseract.pytesseract.tesseract_cmd = _cmd
+if os.getenv("TESSERACT_CMD"):
+    pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_CMD")
 
 _embedder = None
 

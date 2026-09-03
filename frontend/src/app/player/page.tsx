@@ -11,6 +11,22 @@ import { useApp } from "@/contexts/AppContext";
 import { api } from "@/lib/api";
 import type { MasteryRow, StatusPayload, TeachingTurn } from "@/lib/types";
 
+function stageIcon(stage?: string) {
+  switch (stage) {
+    case "demonstrate":
+      return "◆";
+    case "question":
+    case "evaluate":
+      return "?";
+    case "explain":
+      return "✦";
+    case "adapt":
+      return "↻";
+    default:
+      return "●";
+  }
+}
+
 export default function PlayerPage() {
   const router = useRouter();
   const { studentId, lessonId, profile, conversationUrl, lessonPlan } = useApp();
@@ -32,9 +48,14 @@ export default function PlayerPage() {
   const [busy, setBusy] = useState(false);
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-  const fallback = status?.force_fallback === "true" || !conversationUrl;
+  const forceFallback = status?.force_fallback === "true";
+  const fallback = forceFallback || !conversationUrl;
+  const useDaily =
+    !forceFallback &&
+    profile.teaching_via === "reactive" &&
+    Boolean(conversationUrl);
   const localBadge =
-    status?.force_fallback === "true" || status?.llm_tier === "ollama" || status?.mock_llm === "true";
+    forceFallback || status?.llm_tier === "ollama" || status?.llm_tier === "local" || status?.mock_llm === "true";
 
   useEffect(() => {
     let cancelled = false;
@@ -65,7 +86,7 @@ export default function PlayerPage() {
   }, [studentId]);
 
   useEffect(() => {
-    if (!conversationUrl || !dailyRef.current || profile.teaching_via !== "reactive") return;
+    if (!useDaily || !conversationUrl || !dailyRef.current) return;
     let cancelled = false;
     (async () => {
       const DailyIframe = (await import("@daily-co/daily-js")).default;
@@ -86,7 +107,7 @@ export default function PlayerPage() {
         callRef.current = null;
       }
     };
-  }, [conversationUrl, profile.teaching_via]);
+  }, [useDaily, conversationUrl]);
 
   async function fetchNext() {
     const next = await api.nextTurn(studentId, lessonId);
@@ -164,12 +185,13 @@ export default function PlayerPage() {
         <GlassCard className="grid gap-4 p-4 md:grid-cols-5" hover={false}>
           <div className="relative md:col-span-3">
             <div
-              className={`absolute right-3 top-3 z-10 rounded-full px-3 py-1 text-xs uppercase tracking-widest ${
+              className={`absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs uppercase tracking-widest ${
                 turn?.stage === "demonstrate"
                   ? "animate-pulse bg-cyan-400 text-[#0f0c29]"
                   : "bg-black/50 text-white"
               }`}
             >
+              <span aria-hidden>{stageIcon(turn?.stage)}</span>
               {turn?.stage || "understand"}
             </div>
             {fallback ? (
@@ -177,7 +199,7 @@ export default function PlayerPage() {
                 Adaptive Mode
               </span>
             ) : null}
-            {profile.teaching_via === "reactive" && conversationUrl ? (
+            {useDaily ? (
               <div ref={dailyRef} className="aspect-video overflow-hidden rounded-xl shadow-2xl" />
             ) : (
               <video

@@ -4,6 +4,9 @@
   --background: #0f0c29;
   --foreground: #f8fafc;
   --accent: #00d4ff;
+  --violet: #a78bfa;
+  --success: #34d399;
+  --warning: #fbbf24;
 }
 
 @theme inline {

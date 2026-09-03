@@ -1,10 +1,12 @@
 "use client";
 
-import { BlockMath } from "react-katex";
+import katex from "katex";
 import { Highlight, themes } from "prism-react-renderer";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { TeachingTurn } from "@/lib/types";
 import { GlassCard } from "@/components/ui/GlassCard";
+
+const SVG_TYPES = new Set(["diagram", "graph", "timeline", "concept_map"]);
 
 function Typewriter({ text }: { text: string }) {
   return (
@@ -24,28 +26,48 @@ function Typewriter({ text }: { text: string }) {
 }
 
 function EquationView({ tex }: { tex: string }) {
-  const [failed, setFailed] = useState(false);
   const clean = tex.replaceAll("$", "").trim();
-  if (failed) {
+  const html = useMemo(() => {
+    try {
+      return katex.renderToString(clean, {
+        throwOnError: true,
+        displayMode: true,
+        strict: "ignore",
+      });
+    } catch {
+      return null;
+    }
+  }, [clean]);
+
+  if (!html) {
     return <pre className="overflow-x-auto font-mono text-cyan-200">{clean}</pre>;
   }
-  try {
-    return (
-      <div
-        className="overflow-x-auto text-white"
-        onError={() => setFailed(true)}
-      >
-        <BlockMath math={clean} errorColor="#f87171" />
-      </div>
-    );
-  } catch {
-    return <pre className="overflow-x-auto font-mono text-cyan-200">{clean}</pre>;
+  return (
+    <div
+      className="overflow-x-auto text-white [&_.katex]:text-xl"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+function SvgPanel({ content }: { content: string }) {
+  const svgMatch = content.match(/<svg[\s\S]*?<\/svg>/i);
+  if (!svgMatch) {
+    return <Typewriter text={content || "Visual unavailable — follow the narration below."} />;
   }
+  return (
+    <div
+      className="rounded-xl bg-white p-3 text-black shadow-inner drop-shadow-lg"
+      dangerouslySetInnerHTML={{ __html: svgMatch[0] }}
+    />
+  );
 }
 
 export function VisualPanel({ turn }: { turn: TeachingTurn | null }) {
   const content = turn?.visual_content || "";
   const type = turn?.visual_type || "none";
+  const subtitleFallback =
+    turn?.script_text || "The visual panel stays with you for every turn.";
 
   const code = useMemo(() => {
     if (type !== "code") return null;
@@ -57,8 +79,8 @@ export function VisualPanel({ turn }: { turn: TeachingTurn | null }) {
   }, [content, type]);
 
   let inner;
-  if (!turn || type === "none" || !content) {
-    inner = <Typewriter text={turn?.script_text || "The visual panel stays with you for every turn."} />;
+  if (!turn || type === "none" || !content.trim()) {
+    inner = <Typewriter text={subtitleFallback} />;
   } else if (type === "equation") {
     inner = <EquationView tex={content} />;
   } else if (type === "code" && code) {
@@ -82,15 +104,10 @@ export function VisualPanel({ turn }: { turn: TeachingTurn | null }) {
         </Highlight>
       </div>
     );
+  } else if (SVG_TYPES.has(type) || content.includes("<svg")) {
+    inner = <SvgPanel content={content} />;
   } else {
-    inner = content.includes("<svg") ? (
-      <div
-        className="rounded-xl bg-white p-3 text-black shadow-inner"
-        dangerouslySetInnerHTML={{ __html: content }}
-      />
-    ) : (
-      <Typewriter text={turn.script_text} />
-    );
+    inner = <Typewriter text={content || subtitleFallback} />;
   }
 
   return (

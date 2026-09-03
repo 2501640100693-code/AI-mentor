@@ -3,8 +3,8 @@
 import { motion } from "framer-motion";
 
 function barColor(value: number) {
-  if (value >= 0.7) return { fill: "#34d399", glow: "rgba(52,211,153,0.65)" };
-  if (value >= 0.5) return { fill: "#fbbf24", glow: "rgba(251,191,36,0.55)" };
+  if (value >= 0.7) return { fill: "var(--success)", glow: "rgba(52,211,153,0.65)" };
+  if (value >= 0.5) return { fill: "var(--warning)", glow: "rgba(251,191,36,0.55)" };
   return { fill: "#f87171", glow: "rgba(248,113,113,0.55)" };
 }
 

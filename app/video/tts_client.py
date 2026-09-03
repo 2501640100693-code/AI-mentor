@@ -99,7 +99,12 @@ def _pyttsx3_tts(text: str, language: str) -> bytes:
 
 
 def synthesize_speech(text: str, language: str) -> bytes:
-    if os.getenv("MOCK_VIDEO", "true").lower() == "true":
+    """Return raw audio bytes (decoded), never a base64 string."""
+    # FORCE_FALLBACK still needs real TTS for fallback VideoSegment audio.
+    if (
+        os.getenv("MOCK_VIDEO", "true").lower() == "true"
+        and os.getenv("FORCE_FALLBACK", "false").lower() != "true"
+    ):
         return b""
     for name, fn in [
         ("sarvam", _sarvam_with_retry),
@@ -108,8 +113,10 @@ def synthesize_speech(text: str, language: str) -> bytes:
     ]:
         try:
             result = fn(text, language)
+            if not isinstance(result, (bytes, bytearray)):
+                raise TypeError(f"TTS {name} returned {type(result)}, expected bytes")
             print(f"[TTS] Served by: {name}")
-            return result
+            return bytes(result)
         except Exception as e:
             print(f"[TTS] Tier {name} failed: {e}")
     return b""

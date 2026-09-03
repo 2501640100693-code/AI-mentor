@@ -97,7 +97,8 @@ def render_broadcast(
 
 
 def _ensure_persona() -> str:
-    persona_id = os.getenv("TAVUS_PERSONA_ID", "")
+    """Create Tavus CVI persona once (pipeline_mode=echo); reuse TAVUS_PERSONA_ID."""
+    persona_id = os.getenv("TAVUS_PERSONA_ID", "").strip()
     if persona_id:
         return persona_id
     api_key = os.getenv("TAVUS_API_KEY", "")
@@ -111,10 +112,10 @@ def _ensure_persona() -> str:
         timeout=30.0,
     )
     r.raise_for_status()
-    persona_id = r.json().get("persona_id")
+    persona_id = r.json().get("persona_id") or ""
     print(f"[Tavus] Created persona_id={persona_id} — add TAVUS_PERSONA_ID to .env")
-    os.environ["TAVUS_PERSONA_ID"] = persona_id or ""
-    return persona_id or ""
+    os.environ["TAVUS_PERSONA_ID"] = persona_id
+    return persona_id
 
 
 def open_reactive_session(lesson_id: str) -> dict:
@@ -144,12 +145,56 @@ def open_reactive_session(lesson_id: str) -> dict:
     }
 
 
+def _wav_to_pcm_16khz(audio_bytes: bytes) -> bytes:
+    """Convert WAV bytes to raw PCM s16le mono @ 16 kHz when needed."""
+    import audioop
+    import io
+    import wave
+
+    if not audio_bytes:
+        return b""
+    # Already raw / unknown — return as-is if not a RIFF WAV
+    if len(audio_bytes) < 12 or audio_bytes[:4] != b"RIFF":
+        return audio_bytes
+    with wave.open(io.BytesIO(audio_bytes), "rb") as wf:
+        channels = wf.getnchannels()
+        sampwidth = wf.getsampwidth()
+        framerate = wf.getframerate()
+        frames = wf.readframes(wf.getnframes())
+    if channels > 1:
+        frames = audioop.tomono(frames, sampwidth, 0.5, 0.5)
+    if sampwidth != 2:
+        frames = audioop.lin2lin(frames, sampwidth, 2)
+        sampwidth = 2
+    if framerate != 16000:
+        frames, _ = audioop.ratecv(frames, sampwidth, 1, framerate, 16000, None)
+    return frames
+
+
 async def speak_reactive(conversation_id: str, text: str, language: str) -> None:
     from app.video.tts_client import synthesize_speech
 
     audio_bytes = synthesize_speech(text, language)
-    # Echo streaming endpoint varies by Tavus SDK version; audio is synthesized
-    # and returned via fallback path if conversation streaming is unavailable.
+    pcm = _wav_to_pcm_16khz(audio_bytes)
     if not conversation_id or conversation_id.startswith("mock"):
         return
-    print(f"[Tavus] speak_reactive {len(audio_bytes)} bytes to {conversation_id}")
+    if not pcm:
+        return
+    api_key = os.getenv("TAVUS_API_KEY", "")
+    if not api_key:
+        print(f"[Tavus] speak_reactive {len(pcm)} PCM bytes (no API key; local only)")
+        return
+    # Echo / CVI audio ingest — best-effort; never raise to caller
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            await client.post(
+                f"https://tavusapi.com/v2/conversations/{conversation_id}/speak",
+                headers={
+                    "x-api-key": api_key,
+                    "Content-Type": "application/octet-stream",
+                },
+                content=pcm,
+            )
+        print(f"[Tavus] speak_reactive sent {len(pcm)} PCM bytes to {conversation_id}")
+    except Exception as e:
+        print(f"[Tavus] speak_reactive soft-fail: {e} ({len(pcm)} PCM bytes ready)")

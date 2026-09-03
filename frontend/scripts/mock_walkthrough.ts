@@ -7,15 +7,21 @@ async function walk() {
   console.log("2_reactive", sess.conversation_id);
   const turn = await mockApi.nextTurn();
   console.log("3_turn", turn.stage, turn.visual_type, !!turn.script_text);
-  const ans = await mockApi.answer({ student_answer: "V=IR" });
+  const ans = await mockApi.answer({
+    student_id: "s1",
+    lesson_id: diag.lesson_id,
+    concept_id: turn.concept_id,
+    turn_id: turn.turn_id,
+    student_answer: "V=IR",
+  });
   console.log("4_answer", ans.correct);
   const mastery = await mockApi.mastery("s1");
   console.log("5_mastery", mastery.length);
   const report = await mockApi.report("s1", diag.lesson_id);
   console.log("6_report", report.score_percent);
-  const cards = await mockApi.flashcards("s1", diag.lesson_id);
+  const cards = await mockApi.flashcards();
   console.log("7_flashcards", cards.length);
-  const cmap = await mockApi.conceptMap("Ohm's Law", "beginner");
+  const cmap = await mockApi.conceptMap();
   console.log("8_concept_map", !!cmap.svg);
   const status = await mockApi.status();
   console.log("9_status", status.force_fallback, status.mock_video);

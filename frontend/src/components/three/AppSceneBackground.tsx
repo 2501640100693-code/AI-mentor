@@ -2,6 +2,7 @@
 
 import { Float, MeshDistortMaterial, Stars } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
+import { usePathname } from "next/navigation";
 import { useMemo, useRef } from "react";
 import type { Points } from "three";
 import * as THREE from "three";
@@ -71,6 +72,9 @@ export default function AppSceneBackground({
 }: {
   frameloop?: "always" | "demand";
 }) {
+  const pathname = usePathname();
+  const isHomePage = pathname === "/";
+
   return (
     <div className="pointer-events-none fixed inset-0 -z-10">
       <Canvas
@@ -84,8 +88,9 @@ export default function AppSceneBackground({
         <pointLight position={[-6, -2, 4]} intensity={10} color="#a78bfa" />
         <Stars radius={60} depth={40} count={1200} factor={3} fade speed={0.4} />
         <FloatingParticles />
-        <HeroMesh />
+        {!isHomePage && <HeroMesh />}
       </Canvas>
     </div>
   );
 }
+

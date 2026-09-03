@@ -18,6 +18,8 @@ def test_fallback_to_ollama(mock_ollama, mock_claude, mock_gemini):
     os.environ["MOCK_LLM"] = "false"
     os.environ.pop("GEMINI_API_KEY", None)
     result = llm_mod.call_llm("test prompt")
-    assert result
-    assert isinstance(result, str)
+    assert result == "local ok"
+    assert llm_mod.LAST_TIER_USED == "local"
+    mock_ollama.assert_called()
+    mock_gemini.assert_called()
     os.environ["MOCK_LLM"] = "true"

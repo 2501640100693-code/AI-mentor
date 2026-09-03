@@ -25,6 +25,16 @@ def test_parse_time_budget_week_phrase():
     assert minutes == 630
 
 
+def test_parse_time_budget_min_per_day_slash():
+    minutes, multi = parse_time_budget("90 min/day for a week")
+    assert multi is True
+    assert minutes == 630
+
+
+def test_parse_time_budget_bare_int():
+    assert parse_time_budget("45") == (45, False)
+
+
 def test_parse_time_budget_garbage():
     assert parse_time_budget("garbage input") == (20, False)
 

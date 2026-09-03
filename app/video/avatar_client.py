@@ -6,34 +6,30 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 
 from app.db import VideoCache, get_db
 from app.schemas import VideoSegment
+from app.video.cache import get_cached_segment
 from app.video.fallback import fallback_response
 
 
 def render_broadcast(
     script_text: str, language: str, concept_id: str, level: str
 ) -> VideoSegment:
+    cache_key = f"{concept_id}:main:{language}:{level}"
+
     if os.getenv("MOCK_VIDEO", "true").lower() == "true":
         return VideoSegment(
             turn_id="mock",
             video_url="/static/avatar_talking.mp4",
             duration_seconds=10,
             subtitle_text=script_text[:100],
-            cache_key=f"{concept_id}:main:{language}:{level}",
+            cache_key=cache_key,
             render_tier="prerendered",
         )
 
-    cache_key = f"{concept_id}:main:{language}:{level}"
-    with get_db() as db:
-        cached = db.query(VideoCache).filter_by(cache_key=cache_key).first()
-        if cached:
-            return VideoSegment(
-                turn_id=cached.cache_key,
-                video_url=cached.video_url,
-                audio_url=cached.audio_url,
-                subtitle_text=cached.subtitle_text or script_text[:200],
-                cache_key=cached.cache_key,
-                render_tier="prerendered",
-            )
+    cached = get_cached_segment(cache_key)
+    if cached:
+        if not cached.subtitle_text:
+            cached.subtitle_text = script_text[:200]
+        return cached
 
     api_key = os.getenv("TAVUS_API_KEY", "")
     avatar_id = os.getenv("TAVUS_AVATAR_ID", "")
@@ -58,6 +54,7 @@ def render_broadcast(
 
         @retry(stop=stop_after_attempt(30), wait=wait_fixed(10), reraise=True)
         def poll_for_ready():
+            # Sync poll inside plain `def` route / threadpool — never in async def.
             r = httpx.get(
                 f"https://tavusapi.com/v2/videos/{video_id}",
                 headers={"x-api-key": api_key},

@@ -33,15 +33,13 @@ def open_session(body: OpenSessionBody):
     return open_reactive_session(body.lesson_id)
 
 
+@router.post("/render-broadcast")
 def render_broadcast_route(body: BroadcastBody):
+    # Plain def (not async def): Tavus poll can take minutes; sync handlers
+    # run in the threadpool so /health stays responsive.
     return render_broadcast(
         body.script_text, body.language, body.concept_id, body.level
     )
-
-
-router.add_api_route(
-    "/render-broadcast", render_broadcast_route, methods=["POST"]
-)
 
 
 @router.post("/fallback")

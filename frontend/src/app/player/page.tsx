@@ -49,7 +49,9 @@ export default function PlayerPage() {
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   const forceFallback = status?.force_fallback === "true";
-  const fallback = forceFallback || !conversationUrl;
+  const fallback =
+    forceFallback ||
+    (profile.teaching_via === "reactive" && !conversationUrl);
   const useDaily =
     !forceFallback &&
     profile.teaching_via === "reactive" &&
@@ -63,7 +65,12 @@ export default function PlayerPage() {
       const next = await api.nextTurn(studentId, lessonId);
       if (cancelled) return;
       setTurn(next);
-      const clip = await api.renderBroadcast(next.script_text, next.language);
+      const clip = await api.renderBroadcast(
+        next.script_text,
+        next.language,
+        next.concept_id,
+        profile.level,
+      );
       if (cancelled) return;
       setVideoUrl(api.mediaUrl(clip.video_url) || `${apiBase}/static/avatar_talking.mp4`);
       setAudioUrl(api.mediaUrl(clip.audio_url));
@@ -112,7 +119,12 @@ export default function PlayerPage() {
   async function fetchNext() {
     const next = await api.nextTurn(studentId, lessonId);
     setTurn(next);
-    const clip = await api.renderBroadcast(next.script_text, next.language);
+    const clip = await api.renderBroadcast(
+      next.script_text,
+      next.language,
+      next.concept_id,
+      profile.level,
+    );
     setVideoUrl(api.mediaUrl(clip.video_url) || `${apiBase}/static/avatar_talking.mp4`);
     setAudioUrl(api.mediaUrl(clip.audio_url));
     setFeedback(null);

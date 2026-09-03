@@ -1,4 +1,5 @@
 import os
+import threading
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -15,9 +16,23 @@ Path("static_files").mkdir(exist_ok=True)
 
 app = FastAPI(title="AI Teacher")
 
+# Allow the deployed Vercel origin (FRONTEND_URL) plus local dev so the
+# CORS loop works in both directions after deploy without breaking localhost.
+_frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+_allowed_origins = list(
+    dict.fromkeys(
+        [
+            _frontend_url,
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ]
+    )
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:3000")],
+    allow_origins=_allowed_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -30,6 +45,19 @@ from app.video.routes import router as video_router  # noqa: E402
 app.include_router(brain_router, prefix="/api/brain")
 app.include_router(video_router, prefix="/api/video")
 app.mount("/static", StaticFiles(directory="static_files"), name="static")
+
+
+def _warmup_embedder() -> None:
+    try:
+        from app.brain.rag.ingest import get_embedder
+
+        get_embedder()
+        print("[startup] embedder warmup complete")
+    except Exception as e:
+        print(f"[startup] embedder warmup skipped: {e}")
+
+
+threading.Thread(target=_warmup_embedder, daemon=True, name="embedder-warmup").start()
 
 
 @app.get("/health")

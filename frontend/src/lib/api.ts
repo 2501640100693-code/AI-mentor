@@ -35,16 +35,12 @@ export const api = {
 
   async ingest(file: File) {
     if (USE_MOCK) return mockApi.ingest(file);
-    try {
-      const body = new FormData();
-      body.append("file", file);
-      return await request<{ document_id: string }>("/api/brain/ingest", {
-        method: "POST",
-        body,
-      });
-    } catch {
-      return mockApi.ingest(file);
-    }
+    const body = new FormData();
+    body.append("file", file);
+    return request<{ document_id: string }>("/api/brain/ingest", {
+      method: "POST",
+      body,
+    });
   },
 
   async diagnostic(
@@ -59,22 +55,18 @@ export const api = {
     },
   ) {
     if (USE_MOCK) return mockApi.diagnostic(studentId, topic);
-    try {
-      return await request<{
-        lesson_id: string;
-        questions: unknown[];
-        lesson_plan: LessonPlan;
-      }>(
-        `/api/brain/diagnostic/${encodeURIComponent(studentId)}/${encodeURIComponent(topic)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        },
-      );
-    } catch {
-      return mockApi.diagnostic(studentId, topic);
-    }
+    return request<{
+      lesson_id: string;
+      questions: unknown[];
+      lesson_plan: LessonPlan;
+    }>(
+      `/api/brain/diagnostic/${encodeURIComponent(studentId)}/${encodeURIComponent(topic)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    );
   },
 
   async learningPath(body: {
@@ -86,28 +78,20 @@ export const api = {
     teaching_style: string;
   }): Promise<LessonPlan | StudyPlan> {
     if (USE_MOCK) return mockApi.learningPath(body.time_budget, body.topic, body.student_id);
-    try {
-      return await request("/api/brain/learning-path", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-    } catch {
-      return mockApi.learningPath(body.time_budget, body.topic, body.student_id);
-    }
+    return request("/api/brain/learning-path", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
   },
 
   async nextTurn(studentId: string, lessonId: string): Promise<TeachingTurn> {
     if (USE_MOCK) return mockApi.nextTurn();
-    try {
-      return await request("/api/brain/teaching-turn/next", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ student_id: studentId, lesson_id: lessonId }),
-      });
-    } catch {
-      return mockApi.nextTurn();
-    }
+    return request("/api/brain/teaching-turn/next", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ student_id: studentId, lesson_id: lessonId }),
+    });
   },
 
   async answer(payload: {
@@ -118,125 +102,94 @@ export const api = {
     student_answer: string;
   }) {
     if (USE_MOCK) return mockApi.answer(payload);
-    try {
-      return await request<{
-        correct: boolean;
-        feedback: string;
-        misconception_id: string | null;
-        new_p_know: number;
-      }>("/api/brain/answer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-    } catch {
-      return mockApi.answer(payload);
-    }
+    return request<{
+      correct: boolean;
+      feedback: string;
+      misconception_id: string | null;
+      new_p_know: number;
+    }>("/api/brain/answer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
   },
 
   async mastery(studentId: string): Promise<MasteryRow[]> {
     if (USE_MOCK) return mockApi.mastery(studentId);
-    try {
-      return await request(`/api/brain/mastery/${encodeURIComponent(studentId)}`);
-    } catch {
-      return mockApi.mastery(studentId);
-    }
+    return request(`/api/brain/mastery/${encodeURIComponent(studentId)}`);
   },
 
   async report(studentId: string, lessonId: string): Promise<ReportCard> {
     if (USE_MOCK) return mockApi.report(studentId, lessonId);
-    try {
-      return await request(
-        `/api/brain/report/${encodeURIComponent(studentId)}/${encodeURIComponent(lessonId)}`,
-      );
-    } catch {
-      return mockApi.report(studentId, lessonId);
-    }
+    return request(
+      `/api/brain/report/${encodeURIComponent(studentId)}/${encodeURIComponent(lessonId)}`,
+    );
   },
 
   async flashcards(studentId: string, lessonId: string): Promise<Flashcard[]> {
     if (USE_MOCK) return mockApi.flashcards();
-    try {
-      return await request(
-        `/api/brain/flashcards/${encodeURIComponent(studentId)}/${encodeURIComponent(lessonId)}`,
-      );
-    } catch {
-      return mockApi.flashcards();
-    }
+    return request(
+      `/api/brain/flashcards/${encodeURIComponent(studentId)}/${encodeURIComponent(lessonId)}`,
+    );
   },
 
   async conceptMap(topic: string, level: string) {
     if (USE_MOCK) return mockApi.conceptMap();
-    try {
-      return await request<{ svg: string; concept_ids: string[] }>(
-        `/api/brain/concept-map/${encodeURIComponent(topic)}/${encodeURIComponent(level)}`,
-      );
-    } catch {
-      return mockApi.conceptMap();
-    }
+    return request<{ svg: string; concept_ids: string[] }>(
+      `/api/brain/concept-map/${encodeURIComponent(topic)}/${encodeURIComponent(level)}`,
+    );
   },
 
   async openReactiveSession(lessonId: string) {
     if (USE_MOCK) return mockApi.openReactiveSession(lessonId);
-    try {
-      return await request<{ conversation_id: string; conversation_url: string }>(
-        "/api/video/open-reactive-session",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lesson_id: lessonId }),
-        },
-      );
-    } catch {
-      return mockApi.openReactiveSession(lessonId);
-    }
-  },
-
-  async renderBroadcast(scriptText: string, language = "English"): Promise<VideoSegment> {
-    if (USE_MOCK) return mockApi.renderBroadcast(scriptText);
-    try {
-      const seg = await request<VideoSegment>("/api/video/render-broadcast", {
+    return request<{ conversation_id: string; conversation_url: string }>(
+      "/api/video/open-reactive-session",
+      {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          script_text: scriptText,
-          language,
-          concept_id: "intro",
-          level: "beginner",
-        }),
-      });
-      return {
-        ...seg,
-        video_url: mediaUrl(seg.video_url),
-        audio_url: mediaUrl(seg.audio_url),
-      };
-    } catch {
-      return mockApi.renderBroadcast(scriptText);
-    }
+        body: JSON.stringify({ lesson_id: lessonId }),
+      },
+    );
+  },
+
+  async renderBroadcast(
+    scriptText: string,
+    language = "English",
+    conceptId = "intro",
+    level = "beginner",
+  ): Promise<VideoSegment> {
+    if (USE_MOCK) return mockApi.renderBroadcast(scriptText);
+    const seg = await request<VideoSegment>("/api/video/render-broadcast", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        script_text: scriptText,
+        language,
+        concept_id: conceptId,
+        level,
+      }),
+    });
+    return {
+      ...seg,
+      video_url: mediaUrl(seg.video_url),
+      audio_url: mediaUrl(seg.audio_url),
+    };
   },
 
   async status(): Promise<StatusPayload> {
     if (USE_MOCK) return mockApi.status();
-    try {
-      return await request("/api/status");
-    } catch {
-      return mockApi.status();
-    }
+    return request("/api/status");
   },
 
   async revisionSession(studentId: string, conceptIds: string[], lessonId: string) {
     if (USE_MOCK) return mockApi.revisionSession();
-    try {
-      return await request<TeachingTurn[]>(
-        `/api/brain/revision-session/${encodeURIComponent(studentId)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ concept_ids: conceptIds, lesson_id: lessonId }),
-        },
-      );
-    } catch {
-      return mockApi.revisionSession();
-    }
+    return request<TeachingTurn[]>(
+      `/api/brain/revision-session/${encodeURIComponent(studentId)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ concept_ids: conceptIds, lesson_id: lessonId }),
+      },
+    );
   },
 };

@@ -24,7 +24,7 @@ def main() -> None:
     if demo.exists():
         with demo.open("rb") as f:
             files = {"file": (demo.name, f, "text/plain")}
-            r = httpx.post(f"{base}/api/brain/ingest", files=files, timeout=120.0)
+            r = httpx.post(f"{base}/api/brain/ingest", files=files, timeout=300.0)
             r.raise_for_status()
             document_id = r.json().get("document_id")
             print("ingested:", document_id)
@@ -32,7 +32,7 @@ def main() -> None:
     diag = httpx.post(
         f"{base}/api/brain/diagnostic/{args.student}/{args.topic}",
         json={"document_id": document_id, "time_budget": "20 minutes"},
-        timeout=120.0,
+        timeout=300.0,
     )
     diag.raise_for_status()
     lesson_id = diag.json().get("lesson_id")
@@ -43,7 +43,7 @@ def main() -> None:
         turn = httpx.post(
             f"{base}/api/brain/teaching-turn/next",
             json={"student_id": args.student, "lesson_id": lesson_id},
-            timeout=120.0,
+            timeout=300.0,
         )
         turn.raise_for_status()
         script = turn.json().get("script_text", "Welcome to the lesson.")
@@ -55,7 +55,7 @@ def main() -> None:
                 "concept_id": turn.json().get("concept_id", f"c{i}"),
                 "level": "beginner",
             },
-            timeout=60.0,
+            timeout=300.0,
         )
         seg.raise_for_status()
         n += 1

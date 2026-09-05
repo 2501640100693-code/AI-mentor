@@ -9,13 +9,20 @@ export function GlowButton({
   disabled,
   type = "button",
   onClick,
+  variant = "default",
 }: {
   children: ReactNode;
   className?: string;
   disabled?: boolean;
   type?: "button" | "submit" | "reset";
   onClick?: () => void;
+  variant?: "default" | "teal";
 }) {
+  const palette =
+    variant === "teal"
+      ? "rounded-xl bg-gradient-to-r from-[#0e8f6e] to-[#10CD98] font-semibold text-white shadow-[0_0_24px_rgba(16,205,152,0.35)]"
+      : "rounded-full bg-gradient-to-r from-cyan-400 to-violet-400 font-semibold text-[#0f0c29] shadow-[0_0_24px_rgba(0,212,255,0.45)]";
+
   return (
     <motion.button
       type={type}
@@ -23,7 +30,7 @@ export function GlowButton({
       onClick={onClick}
       whileHover={{ scale: 1.03 }}
       whileTap={{ scale: 0.98 }}
-      className={`relative overflow-hidden rounded-full bg-gradient-to-r from-cyan-400 to-violet-400 px-6 py-3 font-semibold text-[#0f0c29] shadow-[0_0_24px_rgba(0,212,255,0.45)] transition disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`relative overflow-hidden px-6 py-3 transition disabled:cursor-not-allowed disabled:opacity-50 ${palette} ${className}`}
     >
       {children}
     </motion.button>

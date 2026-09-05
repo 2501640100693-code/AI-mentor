@@ -27,6 +27,307 @@ body {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
+@keyframes mentorFloatA {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-18px, 14px);
+  }
+}
+
+@keyframes mentorFloatB {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(16px, -20px);
+  }
+}
+
+@keyframes loginSweep {
+  0%,
+  100% {
+    transform: translateX(-18%) rotate(8deg);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translateX(16%) rotate(-6deg);
+    opacity: 0.85;
+  }
+}
+
+@keyframes loginBorderSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes loginFieldPulse {
+  0% {
+    box-shadow: 0 0 0 1px rgba(16, 205, 152, 0.9), 0 0 18px rgba(16, 205, 152, 0.45),
+      0 0 36px rgba(255, 225, 74, 0.18);
+  }
+  100% {
+    box-shadow: 0 0 0 1px rgba(16, 205, 152, 0.45), 0 0 16px rgba(16, 205, 152, 0.22);
+  }
+}
+
+.login-bg-lights {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.login-bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(64px);
+}
+
+.login-bg-orb-a {
+  top: -12%;
+  right: 4%;
+  width: min(52vw, 560px);
+  height: min(52vw, 560px);
+  background: radial-gradient(circle, rgba(16, 205, 152, 0.32), transparent 68%);
+  animation: mentorFloatA 11s ease-in-out infinite;
+}
+
+.login-bg-orb-b {
+  bottom: 4%;
+  left: 8%;
+  width: min(38vw, 420px);
+  height: min(38vw, 420px);
+  background: radial-gradient(circle, rgba(255, 225, 74, 0.14), transparent 70%);
+  animation: mentorFloatB 13s ease-in-out infinite;
+}
+
+.login-bg-orb-c {
+  top: 38%;
+  right: 28%;
+  width: min(24vw, 280px);
+  height: min(24vw, 280px);
+  background: radial-gradient(circle, rgba(147, 255, 12, 0.12), transparent 70%);
+  animation: mentorFloatA 9s ease-in-out infinite reverse;
+}
+
+.login-bg-sweep {
+  position: absolute;
+  inset: -25% -10%;
+  background: linear-gradient(
+    118deg,
+    transparent 38%,
+    rgba(16, 205, 152, 0.1) 50%,
+    rgba(255, 225, 74, 0.06) 54%,
+    transparent 64%
+  );
+  animation: loginSweep 10s ease-in-out infinite;
+}
+
+.login-bg-sweep-b {
+  position: absolute;
+  inset: -30% -15%;
+  background: linear-gradient(
+    248deg,
+    transparent 42%,
+    rgba(147, 255, 12, 0.06) 52%,
+    transparent 62%
+  );
+  animation: loginSweep 16s ease-in-out infinite reverse;
+}
+
+.login-bg-ring {
+  position: absolute;
+  top: 50%;
+  right: 6%;
+  width: min(58vw, 620px);
+  height: min(58vw, 620px);
+  translate: 0 -50%;
+  border-radius: 50%;
+  border: 1px solid rgba(16, 205, 152, 0.12);
+  box-shadow: 0 0 80px rgba(16, 205, 152, 0.08) inset;
+  animation: loginRingPulse 8s ease-in-out infinite;
+}
+
+.login-bg-ring::after {
+  content: "";
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 225, 74, 0.08);
+}
+
+.login-bg-dust {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(16, 205, 152, 0.28) 1px, transparent 1.4px);
+  background-size: 52px 52px;
+  opacity: 0.18;
+  animation: loginDustDrift 28s linear infinite;
+  mask-image: radial-gradient(ellipse 70% 80% at 70% 50%, #000 20%, transparent 75%);
+}
+
+.login-bg-mote {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #10cd98;
+  box-shadow: 0 0 10px rgba(16, 205, 152, 0.8);
+  opacity: 0.55;
+  animation: loginMote 11s ease-in-out infinite;
+}
+
+.login-bg-mote-a {
+  top: 18%;
+  right: 22%;
+  animation-delay: 0s;
+}
+.login-bg-mote-b {
+  top: 62%;
+  right: 12%;
+  background: #ffe14a;
+  box-shadow: 0 0 10px rgba(255, 225, 74, 0.7);
+  animation-delay: -3s;
+  animation-duration: 13s;
+}
+.login-bg-mote-c {
+  top: 40%;
+  right: 38%;
+  animation-delay: -6s;
+  animation-duration: 15s;
+}
+.login-bg-mote-d {
+  bottom: 16%;
+  right: 28%;
+  background: #93ff0c;
+  box-shadow: 0 0 10px rgba(147, 255, 12, 0.65);
+  animation-delay: -8s;
+}
+
+@keyframes loginRingPulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes loginDustDrift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 52px 80px;
+  }
+}
+
+@keyframes loginMote {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translate(-18px, -22px);
+    opacity: 0.8;
+  }
+}
+
+.login-field-box {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  padding: 1.5px;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  transition: box-shadow 0.25s ease;
+}
+
+.login-field-spin {
+  pointer-events: none;
+  position: absolute;
+  inset: -70%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 58%,
+    rgba(16, 205, 152, 0.15) 68%,
+    transparent 78%
+  );
+  opacity: 0.4;
+}
+
+.login-field-box.is-focus {
+  box-shadow: 0 0 0 1px rgba(16, 205, 152, 0.45), 0 0 16px rgba(16, 205, 152, 0.22);
+}
+
+.login-field-box.is-focus .login-field-spin {
+  opacity: 0.95;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 52%,
+    #10cd98 68%,
+    #ffe14a 78%,
+    #10cd98 88%,
+    transparent 96%
+  );
+  animation: loginBorderSpin 2.2s linear infinite;
+}
+
+.login-field-box.is-typing {
+  animation: loginFieldPulse 0.9s ease-out;
+  box-shadow: 0 0 0 1px rgba(16, 205, 152, 0.9), 0 0 22px rgba(16, 205, 152, 0.5),
+    0 0 40px rgba(255, 225, 74, 0.2);
+}
+
+.login-field-box.is-typing .login-field-spin {
+  opacity: 1;
+  animation: loginBorderSpin 1.05s linear infinite;
+}
+
+.login-field-inner {
+  position: relative;
+  z-index: 1;
+  border-radius: 14.5px;
+  background: #070a09;
+}
+
+.login-field-inner input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.875rem;
+  color: #fff;
+  outline: none;
+}
+
+.login-field-inner input::placeholder {
+  color: rgb(255 255 255 / 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-bg-orb,
+  .login-bg-sweep,
+  .login-bg-sweep-b,
+  .login-bg-ring,
+  .login-bg-dust,
+  .login-bg-mote,
+  .login-field-spin,
+  .login-field-box.is-typing {
+    animation: none !important;
+  }
+}
+
 .perspective-player {
   perspective: 1200px;
 }

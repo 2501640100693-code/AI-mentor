@@ -6,6 +6,8 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 load_dotenv()
 
 LAST_TIER_USED: str = "none"
+API_KEY_VALID: bool | None = None
+QUOTA_EXHAUSTED: bool = False
 
 
 def _call_gemini(prompt: str, system: str) -> str:
@@ -77,7 +79,7 @@ def _claude_with_retry(prompt, system):
 
 
 def call_llm(prompt: str, system: str | None = None, prefer: str = "gemini") -> str:
-    global LAST_TIER_USED
+    global API_KEY_VALID, LAST_TIER_USED, QUOTA_EXHAUSTED
     if os.getenv("MOCK_LLM", "true").lower() == "true":
         LAST_TIER_USED = "mock"
         return f"MOCK: {prompt[:50]}"
@@ -99,8 +101,16 @@ def call_llm(prompt: str, system: str | None = None, prefer: str = "gemini") -> 
             result = fn(prompt, system)
             print(f"[LLM] Served by: {name}")
             LAST_TIER_USED = name
+            if name == "gemini":
+                API_KEY_VALID = True
             return result
         except Exception as e:
             print(f"[LLM] Tier {name} failed: {type(e).__name__}: {e}")
+            if name == "gemini":
+                err = str(e).lower()
+                if "429" in err or "quota" in err or "resource_exhausted" in err:
+                    QUOTA_EXHAUSTED = True
+                if "api_key" in err or "api key" in err or "401" in err or "403" in err:
+                    API_KEY_VALID = False
     LAST_TIER_USED = "none"
     return "[LLM ERROR: all tiers failed — check logs]"

@@ -24,6 +24,7 @@ const DEFAULT_PROFILE: LearnerProfile = {
 };
 
 type AppState = {
+  hydrated: boolean;
   studentId: string;
   profile: LearnerProfile;
   setProfile: (next: LearnerProfile) => void;
@@ -42,6 +43,7 @@ type AppState = {
 const AppContext = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const [hydrated, setHydrated] = useState(false);
   const [studentId, setStudentId] = useState("");
   const [profile, setProfile] = useState<LearnerProfile>(DEFAULT_PROFILE);
   const [lessonId, setLessonId] = useState("");
@@ -53,22 +55,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setStudentId(getOrCreateStudentId());
     const saved = window.sessionStorage.getItem("ai_teacher_state");
-    if (!saved) return;
-    try {
-      const parsed = JSON.parse(saved);
-      if (parsed.profile) setProfile(parsed.profile);
-      if (parsed.lessonId) setLessonId(parsed.lessonId);
-      if (parsed.documentId) setDocumentId(parsed.documentId);
-      if (parsed.lessonPlan) setLessonPlan(parsed.lessonPlan);
-      if (parsed.studyPlan) setStudyPlan(parsed.studyPlan);
-      if (parsed.conversationUrl) setConversationUrl(parsed.conversationUrl);
-    } catch {
-      /* ignore corrupt session */
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.profile) setProfile(parsed.profile);
+        if (parsed.lessonId) setLessonId(parsed.lessonId);
+        if (parsed.documentId) setDocumentId(parsed.documentId);
+        if (parsed.lessonPlan) setLessonPlan(parsed.lessonPlan);
+        if (parsed.studyPlan) setStudyPlan(parsed.studyPlan);
+        if (parsed.conversationUrl) setConversationUrl(parsed.conversationUrl);
+      } catch {
+        /* ignore corrupt session */
+      }
     }
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (!studentId) return;
+    if (!hydrated || !studentId) return;
     window.sessionStorage.setItem(
       "ai_teacher_state",
       JSON.stringify({
@@ -80,10 +84,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         conversationUrl,
       }),
     );
-  }, [studentId, profile, lessonId, documentId, lessonPlan, studyPlan, conversationUrl]);
+  }, [hydrated, studentId, profile, lessonId, documentId, lessonPlan, studyPlan, conversationUrl]);
 
   const value = useMemo(
     () => ({
+      hydrated,
       studentId,
       profile,
       setProfile,
@@ -98,7 +103,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       conversationUrl,
       setConversationUrl,
     }),
-    [studentId, profile, lessonId, documentId, lessonPlan, studyPlan, conversationUrl],
+    [hydrated, studentId, profile, lessonId, documentId, lessonPlan, studyPlan, conversationUrl],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

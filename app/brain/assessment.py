@@ -2,8 +2,11 @@ import json
 import re
 
 from app.brain.bkt import classify_mastery
+from app.brain.session_meta import read_session_meta
 from app.db import (
     Concept,
+    Lesson,
+    LessonSessionModel,
     MasteryState,
     StudentProfileModel,
     get_db,
@@ -31,7 +34,8 @@ Key concept the answer should demonstrate: {question.expected_answer_key}
 Student's answer: {student_answer}
 
 Classify the student's answer as exactly one of: CORRECT, PARTIALLY_CORRECT, INCORRECT.
-Then give ONE short sentence of constructive feedback.
+Then give ONE short sentence of constructive feedback spoken to the student:
+warm teacher voice, no 'Certainly!', no bullet lists, no assistant filler.
 Respond in EXACTLY this format, nothing else:
 LABEL: <CORRECT|PARTIALLY_CORRECT|INCORRECT>
 FEEDBACK: <one sentence>"""
@@ -67,6 +71,9 @@ def generate_report_card(student_id: str, lesson_id: str) -> ReportCard:
                 strong_areas=[],
                 weak_areas=[],
                 recommendation="No assessment data yet for this lesson.",
+                incorrect_concepts=[],
+                suggested_next_topic="",
+                summary="No assessment data yet for this lesson.",
             )
         score_percent = (sum(r.p_know for r in rows) / len(rows)) * 100
         strong_areas = [
@@ -102,6 +109,51 @@ def generate_report_card(student_id: str, lesson_id: str) -> ReportCard:
         profile.overall_weak_json = json.dumps(
             [k for k, v in agg.items() if classify_mastery(v) == "weak"]
         )
+        session = (
+            db.query(LessonSessionModel)
+            .filter_by(student_id=student_id, lesson_id=lesson_id)
+            .first()
+        )
+        meta = read_session_meta(session) if session else {}
+        fail_counts = meta.get("fail_counts") if isinstance(meta.get("fail_counts"), dict) else {}
+        incorrect_concepts = [
+            names.get(cid, cid)
+            for cid, count in fail_counts.items()
+            if isinstance(count, (int, float)) and count >= 1 and cid in concept_ids
+        ]
+        if not incorrect_concepts:
+            incorrect_concepts = list(weak_areas)
+        lesson = db.query(Lesson).filter_by(lesson_id=lesson_id).first()
+        root_topic = lesson.topic if lesson else "this topic"
+        suggested_next_topic = (
+            f"{(weak_areas[0] if weak_areas else root_topic)} — next lesson"
+        )
+        try:
+            suggested_raw = call_llm(
+                f"Suggest one next lesson topic in one short phrase. Root topic: {root_topic}. "
+                f"Weak areas: {weak_areas or ['none']}. Return only the topic phrase."
+            )
+            phrase = suggested_raw.strip().splitlines()[0].strip().strip('"')
+            if phrase and "MOCK:" not in phrase and "LLM ERROR" not in phrase:
+                suggested_next_topic = phrase[:120]
+        except Exception:
+            pass
+        summary = (
+            f"Score {round(score_percent, 1)}%. "
+            f"Strong: {', '.join(strong_areas) or 'none yet'}. "
+            f"Needs work: {', '.join(weak_areas) or 'none yet'}."
+        )
+        try:
+            summary_raw = call_llm(
+                f"Write 2-3 spoken sentences summarizing this lesson report like an encouraging teacher. "
+                f"Score: {round(score_percent, 1)}%. Strong: {strong_areas}. Weak: {weak_areas}. "
+                f"No jargon, IDs, bullet lists, or 'Certainly!'."
+            )
+            cleaned = summary_raw.strip()
+            if cleaned and "MOCK:" not in cleaned and "LLM ERROR" not in cleaned:
+                summary = cleaned[:600]
+        except Exception:
+            pass
         return ReportCard(
             student_id=student_id,
             lesson_id=lesson_id,
@@ -109,4 +161,7 @@ def generate_report_card(student_id: str, lesson_id: str) -> ReportCard:
             strong_areas=strong_areas,
             weak_areas=weak_areas,
             recommendation=recommendation,
+            incorrect_concepts=incorrect_concepts,
+            suggested_next_topic=suggested_next_topic,
+            summary=summary,
         )

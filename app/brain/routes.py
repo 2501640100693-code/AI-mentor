@@ -5,13 +5,14 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
 from app.brain.assessment import generate_report_card, grade_answer
 from app.brain.bkt import DEMO_TRANSIT_OVERRIDE, classify_mastery, update_p_know
-from app.brain.diagnostic import run_diagnostic
+from app.brain.diagnostic import run_diagnostic, score_diagnostic_answers
 from app.brain.learning_path import build_learning_path, get_or_create_profile
+from app.brain.session_meta import read_session_meta, write_session_meta
 from app.brain.lesson_planner import (
     STAGE_INSTRUCTIONS,
     STAGE_ORDER,
@@ -27,6 +28,7 @@ from app.db import (
     Lesson,
     LessonSessionModel,
     MasteryState,
+    Misconception,
     get_db,
 )
 from app.llm import call_llm
@@ -55,6 +57,8 @@ class DiagnosticBody(BaseModel):
 class NextTurnBody(BaseModel):
     student_id: str
     lesson_id: str
+    request_adapt: bool = False
+    language_override: str | None = None
 
 
 class AnswerBody(BaseModel):
@@ -63,6 +67,18 @@ class AnswerBody(BaseModel):
     concept_id: str
     turn_id: str
     student_answer: str
+
+
+class DiagnosticAnswerItem(BaseModel):
+    concept_id: str
+    student_answer: str = ""
+    familiarity: str | None = None
+
+
+class DiagnosticAnswersBody(BaseModel):
+    student_id: str
+    lesson_id: str
+    answers: list[DiagnosticAnswerItem]
 
 
 class RevisionBody(BaseModel):
@@ -108,6 +124,15 @@ def diagnostic(student_id: str, topic: str, body: DiagnosticBody | None = None):
     )
 
 
+@router.post("/diagnostic-answers")
+def diagnostic_answers(body: DiagnosticAnswersBody):
+    return score_diagnostic_answers(
+        student_id=body.student_id,
+        lesson_id=body.lesson_id,
+        answers=[a.model_dump() for a in body.answers],
+    )
+
+
 @router.post("/learning-path")
 def learning_path(body: LearningPathBody):
     return build_learning_path(
@@ -126,9 +151,15 @@ def profile(student_id: str):
 
 
 @router.get("/mastery/{student_id}")
-def mastery(student_id: str):
+def mastery(student_id: str, lesson_id: str | None = Query(default=None)):
     with get_db() as db:
         rows = db.query(MasteryState).filter_by(student_id=student_id).all()
+        if lesson_id:
+            allowed = {
+                c.concept_id
+                for c in db.query(Concept).filter_by(lesson_id=lesson_id).all()
+            }
+            rows = [r for r in rows if r.concept_id in allowed]
         return [
             {
                 "student_id": r.student_id,
@@ -244,7 +275,9 @@ def revision_session(student_id: str, body: RevisionBody):
             concept = db.query(Concept).filter_by(concept_id=cid).first()
             name = concept.name if concept else cid
             script = call_llm(
-                f"Re-teach '{name}' in 5 minutes using a DIFFERENT analogy than a textbook definition. Keep it concise."
+                f"Re-teach '{name}' in 5 minutes using a DIFFERENT analogy than a textbook definition. "
+                "Keep it concise. Sound like a warm teacher speaking out loud: plain sentences, "
+                "no 'Certainly!', no bullet lists, no assistant filler."
             )
             turns.append(
                 TeachingTurn(
@@ -271,6 +304,50 @@ def concept_map(topic: str, level: str):
     return {"svg": svg, "concept_ids": [c["concept_id"] for c in dag]}
 
 
+def _attach_turn_question(
+    turn: TeachingTurn,
+    current_concept_name: str,
+    level: str,
+    chunks: list[str] | None,
+    document_id: str | None,
+) -> None:
+    if document_id and not chunks:
+        turn.question = QuestionBlock(
+            prompt=f"What from the uploaded material is still unclear about {current_concept_name}?",
+            type="explain_in_own_words",
+            expected_answer_key=current_concept_name,
+        )
+        return
+    q_type = random.choice(
+        ["mcq", "short_answer", "conceptual", "explain_in_own_words"]
+    )
+    grounding = ""
+    if chunks:
+        grounding = (
+            "Based only on this source context, do not invent facts:\n"
+            + "\n".join(chunks[:4])
+            + "\n"
+        )
+    q_raw = call_llm(
+        f"{grounding}Generate a {q_type} question to test a {level} student's understanding of '{current_concept_name}'.\n"
+        f'Format as JSON: {{"prompt": "...", "type": "{q_type}", "expected_answer_key": "...", '
+        '"options": ["A: ...", "B: ...", "C: ...", "D: ..."]}\n'
+        "Only include options if type is mcq. Return ONLY valid JSON."
+    )
+    try:
+        import re as _re
+
+        match = _re.search(r"\{.*\}", q_raw, _re.DOTALL)
+        q_data = json.loads(match.group(0) if match else q_raw)
+        turn.question = QuestionBlock(**q_data)
+    except Exception:
+        turn.question = QuestionBlock(
+            prompt=f"Can you explain {current_concept_name} in your own words?",
+            type="explain_in_own_words",
+            expected_answer_key=current_concept_name,
+        )
+
+
 @router.post("/teaching-turn/next")
 def teaching_turn_next(body: NextTurnBody):
     with get_db() as db:
@@ -295,11 +372,17 @@ def teaching_turn_next(body: NextTurnBody):
             )
         current_concept_id = concept.concept_id if concept else "fallback_concept_0"
         current_concept_name = concept.name if concept else "this concept"
-        current_stage = session.current_stage or "understand"
+        persisted_stage = session.current_stage or "understand"
+        effective_stage = "adapt" if body.request_adapt else persisted_stage
         document_id = session.document_id
-        language = lesson.language if lesson else "English"
+        meta = read_session_meta(session)
+        if body.language_override and body.language_override.strip():
+            meta["language_override"] = body.language_override.strip()
+            write_session_meta(session, meta)
+        language = meta.get("language_override") or (lesson.language if lesson else "English")
         level = lesson.learner_level if lesson else "beginner"
         topic = lesson.topic if lesson else current_concept_name
+        chunks: list[str] = []
 
         if document_id:
             from app.brain.rag.retrieve import generate_grounded_explanation, retrieve
@@ -307,16 +390,60 @@ def teaching_turn_next(body: NextTurnBody):
             chunks = retrieve(
                 query=current_concept_name, document_id=document_id, top_k=4
             )
-            script_text = generate_grounded_explanation(
-                current_concept_name, chunks, language
-            )
+            if effective_stage == "adapt":
+                last_script = meta.get("last_script_text") or ""
+                misc_desc = meta.get("last_misconception_desc") or "the student's confusion"
+                fail_counts = meta.get("fail_counts") if isinstance(meta.get("fail_counts"), dict) else {}
+                fails = int(fail_counts.get(current_concept_id, 0) or 0)
+                if not chunks:
+                    script_text = "This isn't in the uploaded material."
+                else:
+                    extra = (
+                        f"Do not repeat this explanation:\n{last_script}\n"
+                        f"Use a new analogy targeting: {misc_desc}. "
+                    )
+                    if fails >= 2:
+                        extra += "Give ONE short example only, not a full re-explanation. "
+                    context = "\n\n".join(chunks[:6])
+                    script_text = call_llm(
+                        f"Teach '{current_concept_name}' in {language}. {extra}"
+                        f"Ground EVERY factual claim ONLY in this source context:\n{context}\n"
+                        "Sound like a warm teacher speaking out loud: plain sentences, "
+                        "no 'Certainly!', no bullet lists, no assistant filler."
+                    )
+            else:
+                script_text = generate_grounded_explanation(
+                    current_concept_name, chunks, language
+                )
         else:
-            prompt = (
-                f"You are teaching '{current_concept_name}' to a {level} student in {language}. "
-                f"Stage: {current_stage}. {STAGE_INSTRUCTIONS.get(current_stage, '')} "
-                "Keep the explanation concise and engaging."
-            )
-            script_text = call_llm(prompt)
+            if effective_stage == "adapt":
+                last_script = meta.get("last_script_text") or ""
+                misc_desc = meta.get("last_misconception_desc") or "the student's confusion"
+                fail_counts = meta.get("fail_counts") if isinstance(meta.get("fail_counts"), dict) else {}
+                fails = int(fail_counts.get(current_concept_id, 0) or 0)
+                prompt = (
+                    f"You are teaching '{current_concept_name}' to a {level} student in {language}. "
+                    f"Do not repeat this explanation:\n{last_script}\n"
+                    f"Use a new analogy targeting: {misc_desc}. "
+                )
+                if fails >= 2:
+                    prompt += "Give ONE short example only, not a full re-explanation. "
+                else:
+                    prompt += "Keep the explanation concise and engaging. "
+                prompt += (
+                    "Sound like a warm teacher speaking out loud: plain sentences, "
+                    "no 'Certainly!', no bullet lists, no assistant filler."
+                )
+                script_text = call_llm(prompt)
+            else:
+                prompt = (
+                    f"You are teaching '{current_concept_name}' to a {level} student in {language}. "
+                    f"Stage: {effective_stage}. {STAGE_INSTRUCTIONS.get(effective_stage, '')} "
+                    "Keep the explanation concise and engaging. "
+                    "Sound like a warm teacher speaking out loud: plain sentences, "
+                    "no 'Certainly!', no bullet lists, no assistant filler."
+                )
+                script_text = call_llm(prompt)
 
         visual_type = choose_visual_type(current_concept_name, topic, level)
         visual_reasoning = ""
@@ -329,43 +456,32 @@ def teaching_turn_next(body: NextTurnBody):
         turn = TeachingTurn(
             turn_id=str(uuid.uuid4()),
             concept_id=current_concept_id,
-            stage=current_stage,
+            stage=effective_stage,  # type: ignore[arg-type]
             language=language,
             script_text=script_text,
             visual_type=visual_type,  # type: ignore[arg-type]
             visual_reasoning=visual_reasoning,
         )
         set_turn_visual_content(turn, current_concept_name, level, topic)
-        if current_stage in ("question", "evaluate"):
-            q_type = random.choice(
-                ["mcq", "short_answer", "conceptual", "explain_in_own_words"]
-            )
-            q_raw = call_llm(
-                f"Generate a {q_type} question to test a {level} student's understanding of '{current_concept_name}'.\n"
-                f'Format as JSON: {{"prompt": "...", "type": "{q_type}", "expected_answer_key": "...", '
-                '"options": ["A: ...", "B: ...", "C: ...", "D: ..."]}\n'
-                "Only include options if type is mcq. Return ONLY valid JSON."
-            )
-            try:
-                import re as _re
+        if effective_stage in ("question", "evaluate", "adapt"):
+            _attach_turn_question(turn, current_concept_name, level, chunks, document_id)
 
-                match = _re.search(r"\{.*\}", q_raw, _re.DOTALL)
-                q_data = json.loads(match.group(0) if match else q_raw)
-                turn.question = QuestionBlock(**q_data)
-            except Exception:
-                turn.question = QuestionBlock(
-                    prompt=f"Can you explain {current_concept_name} in your own words?",
-                    type="explain_in_own_words",
-                    expected_answer_key=current_concept_name,
-                )
-
-        next_stage = STAGE_ORDER[(STAGE_ORDER.index(current_stage) + 1) % len(STAGE_ORDER)]
         turns = json.loads(session.turns_json or "[]")
         turns.append(turn.model_dump())
         session.turns_json = json.dumps(turns)
-        session.current_stage = next_stage
+        # request_adapt is ephemeral: do not advance persisted current_stage from "adapt"
+        if body.request_adapt:
+            session.current_stage = persisted_stage
+        else:
+            try:
+                idx = STAGE_ORDER.index(effective_stage)
+            except ValueError:
+                idx = 0
+            session.current_stage = STAGE_ORDER[(idx + 1) % len(STAGE_ORDER)]
         session.current_turn_id = turn.turn_id
         session.last_turn_at = turn.turn_id
+        meta["last_script_text"] = script_text
+        write_session_meta(session, meta)
         return turn
 
 
@@ -403,6 +519,23 @@ def answer(body: AnswerBody):
                 body.concept_id,
                 topic=lesson.topic if lesson else None,
             )
+            meta = read_session_meta(session)
+            meta["last_misconception_id"] = misconception_id
+            desc = ""
+            if misconception_id:
+                mrow = (
+                    db.query(Misconception)
+                    .filter_by(misconception_id=misconception_id)
+                    .first()
+                )
+                if mrow and mrow.description:
+                    desc = mrow.description
+            meta["last_misconception_desc"] = desc or "the student's confusion"
+            meta["last_script_text"] = matching.get("script_text") or meta.get("last_script_text") or ""
+            counts = meta.get("fail_counts") if isinstance(meta.get("fail_counts"), dict) else {}
+            counts[body.concept_id] = int(counts.get(body.concept_id, 0) or 0) + 1
+            meta["fail_counts"] = counts
+            write_session_meta(session, meta)
         row = (
             db.query(MasteryState)
             .filter_by(student_id=body.student_id, concept_id=body.concept_id)

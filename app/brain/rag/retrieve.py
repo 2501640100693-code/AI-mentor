@@ -33,12 +33,16 @@ def retrieve(
 def generate_grounded_explanation(
     concept: str, chunks: list[str], target_language: str
 ) -> str:
+    if not chunks:
+        return "This isn't in the uploaded material."
     context = "\n\n".join(chunks[:6])
     prompt = (
         f"Teach the concept '{concept}' in {target_language}. "
         "Ground EVERY factual claim ONLY in this source context:\n"
         f"{context}\n"
-        "If the sources are insufficient, say so plainly."
+        "If the sources are insufficient, say so plainly. "
+        "Sound like a warm teacher speaking out loud: plain sentences, no 'Certainly!', "
+        "no bullet lists, no assistant filler."
     )
     text = call_llm(prompt)
     from app.brain.hallucination_check import verify_claims
@@ -54,5 +58,5 @@ def generate_grounded_explanation(
         ok2, _ = verify_claims(text2, chunks)
         if ok2:
             return text2
-        return f"[unverified] {text}"
+        return "This isn't in the uploaded material."
     return text

@@ -12,7 +12,7 @@ const AppSceneBackground = dynamic(
 export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isLogin = pathname === "/login";
-  const frameloop = pathname === "/onboard" || pathname === "/player" ? "always" : "demand";
+  const frameloop = "always";
   return (
     <AppProvider>
       {!isLogin && <AppSceneBackground frameloop={frameloop} />}

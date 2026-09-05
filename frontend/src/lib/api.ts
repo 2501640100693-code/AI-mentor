@@ -2,6 +2,7 @@
 
 import { mockApi } from "./mockApi";
 import type {
+  DiagnosticQuestion,
   Flashcard,
   LessonPlan,
   MasteryRow,
@@ -57,7 +58,7 @@ export const api = {
     if (USE_MOCK) return mockApi.diagnostic(studentId, topic);
     return request<{
       lesson_id: string;
-      questions: unknown[];
+      questions: DiagnosticQuestion[];
       lesson_plan: LessonPlan;
     }>(
       `/api/brain/diagnostic/${encodeURIComponent(studentId)}/${encodeURIComponent(topic)}`,
@@ -85,12 +86,41 @@ export const api = {
     });
   },
 
-  async nextTurn(studentId: string, lessonId: string): Promise<TeachingTurn> {
+  async submitDiagnosticAnswers(payload: {
+    student_id: string;
+    lesson_id: string;
+    answers: Array<{
+      concept_id: string;
+      student_answer: string;
+      familiarity?: "known" | "unknown" | null;
+    }>;
+  }) {
+    if (USE_MOCK) return mockApi.submitDiagnosticAnswers(payload);
+    return request<{ lesson_id: string; updates: Array<{ concept_id: string; p_know: number }> }>(
+      "/api/brain/diagnostic-answers",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    );
+  },
+
+  async nextTurn(
+    studentId: string,
+    lessonId: string,
+    opts?: { request_adapt?: boolean; language_override?: string | null },
+  ): Promise<TeachingTurn> {
     if (USE_MOCK) return mockApi.nextTurn();
     return request("/api/brain/teaching-turn/next", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ student_id: studentId, lesson_id: lessonId }),
+      body: JSON.stringify({
+        student_id: studentId,
+        lesson_id: lessonId,
+        request_adapt: opts?.request_adapt ?? false,
+        language_override: opts?.language_override ?? null,
+      }),
     });
   },
 
@@ -114,9 +144,10 @@ export const api = {
     });
   },
 
-  async mastery(studentId: string): Promise<MasteryRow[]> {
+  async mastery(studentId: string, lessonId?: string): Promise<MasteryRow[]> {
     if (USE_MOCK) return mockApi.mastery(studentId);
-    return request(`/api/brain/mastery/${encodeURIComponent(studentId)}`);
+    const q = lessonId ? `?lesson_id=${encodeURIComponent(lessonId)}` : "";
+    return request(`/api/brain/mastery/${encodeURIComponent(studentId)}${q}`);
   },
 
   async report(studentId: string, lessonId: string): Promise<ReportCard> {

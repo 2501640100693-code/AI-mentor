@@ -212,13 +212,13 @@ STAGE_ORDER = [
 ]
 
 STAGE_INSTRUCTIONS = {
-    "understand": "Introduce the concept and its importance.",
-    "plan": "Outline what the student will learn about this concept.",
-    "explain": "Explain the concept clearly with a helpful analogy.",
-    "demonstrate": "Show a concrete example demonstrating the concept.",
-    "question": "Ask a thought-provoking question to test understanding.",
-    "evaluate": "Evaluate the student's progress on this concept.",
-    "adapt": "Re-explain using a different approach or analogy.",
+    "understand": "Talk them into why this idea matters, like a teacher starting class.",
+    "plan": "Tell them, in a few spoken sentences, what they will walk away knowing.",
+    "explain": "Walk through the idea with one helpful analogy, as if speaking out loud.",
+    "demonstrate": "Show one concrete example out loud, not a list of cases.",
+    "question": "Ask one clear spoken question, not a quiz list.",
+    "evaluate": "Tell them honestly how they are doing, then what to try next.",
+    "adapt": "Try a different analogy and explain it again in spoken language.",
 }
 
 

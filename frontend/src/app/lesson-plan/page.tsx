@@ -3,13 +3,13 @@
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlowButton } from "@/components/ui/GlowButton";
 import { PageShell } from "@/components/ui/PageShell";
 import { useApp } from "@/contexts/AppContext";
 import { api } from "@/lib/api";
-import { MOCK_LESSON } from "@/lib/mockApi";
+import { humanError } from "@/lib/errors";
 
 const ConceptGraph3D = dynamic(() => import("@/components/three/ConceptGraph3D"), {
   ssr: false,
@@ -31,25 +31,42 @@ function unlockAudio() {
 
 export default function LessonPlanPage() {
   const router = useRouter();
-  const { profile, lessonPlan, studyPlan, lessonId, setConversationUrl } = useApp();
+  const { hydrated, profile, lessonPlan, studyPlan, lessonId, setConversationUrl } = useApp();
   const [busy, setBusy] = useState(false);
-  const plan = lessonPlan || MOCK_LESSON;
-  const concepts = plan.concepts;
+  const [error, setError] = useState("");
+  const plan = lessonPlan;
+  const concepts = plan?.concepts || [];
 
   const today = useMemo(() => studyPlan?.daily_schedule?.[0]?.day ?? 1, [studyPlan]);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!lessonPlan) router.replace("/upload");
+  }, [hydrated, lessonPlan, router]);
+
   async function startLesson() {
+    if (!plan) return;
     setBusy(true);
+    setError("");
     unlockAudio();
-    const session = await api.openReactiveSession(lessonId || plan.lesson_id);
-    setConversationUrl(session.conversation_url || "");
-    router.push("/player");
+    try {
+      if (profile.teaching_via === "reactive") {
+        const session = await api.openReactiveSession(lessonId || plan.lesson_id);
+        setConversationUrl(session.conversation_url || "");
+      } else {
+        setConversationUrl("");
+      }
+      router.push("/player");
+    } catch (err) {
+      setError(humanError(err, "Could not open the lesson."));
+      setBusy(false);
+    }
   }
 
   return (
     <PageShell
-      title={studyPlan ? `${studyPlan.total_days}-day path` : plan.topic}
-      subtitle={`${profile.level} · ${plan.time_budget_minutes || 20} minutes · ${plan.interaction_density} interaction`}
+      title={studyPlan ? `${studyPlan.total_days}-day path` : plan?.topic || "Lesson plan"}
+      subtitle={`${profile.level} · ${plan?.time_budget_minutes || 20} minutes · ${plan?.interaction_density || "standard"} interaction`}
     >
       <GlassCard className="mb-6 p-4" hover={false}>
         <ConceptGraph3D concepts={concepts} />
@@ -108,7 +125,8 @@ export default function LessonPlanPage() {
             </motion.div>
           ))}
         </div>
-        <GlowButton className="mt-6" onClick={startLesson} disabled={busy}>
+        {error ? <p className="mt-4 text-sm text-[color:var(--ember)]">{error}</p> : null}
+        <GlowButton className="mt-6" onClick={startLesson} disabled={busy || !plan}>
           {busy ? "Opening session…" : "Start Lesson"}
         </GlowButton>
       </GlassCard>

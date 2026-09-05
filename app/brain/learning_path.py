@@ -9,7 +9,58 @@ from app.brain.lesson_planner import (
     schedule_by_time_budget,
 )
 from app.db import LearningPathModel, StudentProfileModel, get_db
+from app.llm import call_llm
 from app.schemas import ConceptNode, DaySchedule, LessonPlan, StudentProfile, StudyPlan
+
+
+def _topic_is_broad(topic: str, time_budget: str, is_multi_day: bool) -> bool:
+    if is_multi_day:
+        return True
+    t = topic.strip()
+    lowered = t.lower()
+    if "," in t or " and " in lowered or "/" in t:
+        return True
+    words = [w for w in re.split(r"\s+", t) if w]
+    if len(words) <= 2 and re.search(r"\b(day|days|week|weeks)\b", time_budget.lower()):
+        return True
+    return False
+
+
+def _curriculum_areas(topic: str) -> list[str]:
+    raw = call_llm(
+        f"Create a multi-topic curriculum under '{topic}'. "
+        "Return ONLY a JSON array of 5 to 8 distinct subject-area titles (strings). "
+        "Each title is a different area, not the same concept restated."
+    )
+    areas: list[str] = []
+    try:
+        match = re.search(r"\[.*\]", raw, re.DOTALL)
+        parsed = json.loads(match.group(0) if match else raw)
+        if isinstance(parsed, list):
+            for item in parsed:
+                if isinstance(item, str) and item.strip():
+                    areas.append(item.strip())
+                elif isinstance(item, dict):
+                    title = item.get("title") or item.get("name") or item.get("topic")
+                    if isinstance(title, str) and title.strip():
+                        areas.append(title.strip())
+    except Exception:
+        areas = []
+    if not areas:
+        parts = [p.strip() for p in re.split(r",|/|\band\b", topic) if p.strip()]
+        areas = parts if len(parts) >= 2 else [topic]
+    # unique, keep order, clamp 5-8 when we have enough
+    seen: set[str] = set()
+    unique: list[str] = []
+    for a in areas:
+        key = a.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(a)
+    if len(unique) > 8:
+        unique = unique[:8]
+    return unique
 
 
 def build_learning_path(
@@ -21,9 +72,10 @@ def build_learning_path(
     teaching_style: str = "Direct",
 ):
     total_minutes, is_multi_day = parse_time_budget(time_budget)
-    dag = generate_concept_dag(topic, learner_level)
+    broad = _topic_is_broad(topic, time_budget, is_multi_day)
 
-    if not is_multi_day:
+    if not is_multi_day and not broad:
+        dag = generate_concept_dag(topic, learner_level)
         ordered = schedule_by_time_budget(dag, total_minutes)
         lesson_id = str(uuid.uuid4())
         return LessonPlan(
@@ -37,6 +89,9 @@ def build_learning_path(
             concepts=[ConceptNode(**c) for c in ordered],
         )
 
+    areas = _curriculum_areas(topic)
+    day1_focus = areas[0]
+    generate_concept_dag(day1_focus, learner_level)
     daily_budget = 90
     daily_match = re.search(
         r"(\d+)\s*(min|minute|minutes)\s*a\s*day", time_budget.lower()
@@ -44,35 +99,20 @@ def build_learning_path(
     if daily_match:
         daily_budget = int(daily_match.group(1))
 
-    ordered = schedule_by_time_budget(dag, total_minutes)
-    days: list[list[dict]] = []
-    current, minutes = [], 0
-    for concept in ordered:
-        est = int(concept.get("estimated_minutes") or 10)
-        if current and minutes + est > daily_budget:
-            days.append(current)
-            current, minutes = [], 0
-        current.append(concept)
-        minutes += est
-    if current:
-        days.append(current)
-
     plan_id = str(uuid.uuid4())
     study_plan = StudyPlan(
         plan_id=plan_id,
         root_topic=topic,
         student_id=student_id,
-        total_days=max(len(days), 1),
+        total_days=max(len(areas), 1),
         daily_schedule=[
             DaySchedule(
                 day=i + 1,
-                topics=[c["name"] for c in day_concepts],
-                estimated_minutes=sum(
-                    int(c.get("estimated_minutes") or 10) for c in day_concepts
-                ),
-                focus=day_concepts[0]["name"] if day_concepts else "Review",
+                topics=[area],
+                estimated_minutes=daily_budget,
+                focus=area,
             )
-            for i, day_concepts in enumerate(days)
+            for i, area in enumerate(areas)
         ],
     )
     with get_db() as db:

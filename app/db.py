@@ -125,6 +125,7 @@ class LessonSessionModel(Base):
     turns_json = Column(Text, default="[]")
     document_id = Column(String, nullable=True)
     last_turn_at = Column(String, nullable=True)
+    session_meta_json = Column(Text, default="{}")
 
 
 class Flashcard(Base):
@@ -139,6 +140,21 @@ class Flashcard(Base):
 
 
 Base.metadata.create_all(engine)
+
+
+def _ensure_session_meta_column() -> None:
+    """create_all does not add columns to an existing SQLite table."""
+    with engine.connect() as conn:
+        rows = conn.exec_driver_sql("PRAGMA table_info(lesson_sessions)").fetchall()
+        cols = {r[1] for r in rows}
+        if "session_meta_json" not in cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE lesson_sessions ADD COLUMN session_meta_json TEXT DEFAULT '{}'"
+            )
+            conn.commit()
+
+
+_ensure_session_meta_column()
 
 
 @contextmanager

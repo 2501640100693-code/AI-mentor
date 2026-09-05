@@ -3,6 +3,8 @@ __pycache__/
 *.pyc
 *.pyo
 app.db
+app.db-shm
+app.db-wal
 chroma_data/
 chroma_data_test/
 *.onnx

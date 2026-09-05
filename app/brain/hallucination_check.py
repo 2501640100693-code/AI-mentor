@@ -24,4 +24,4 @@ def verify_claims(
                 flagged = [c.strip() for c in rest.split("|") if c.strip()]
         return False, flagged
     except Exception:
-        return True, []
+        return False, ["verification_failed"]

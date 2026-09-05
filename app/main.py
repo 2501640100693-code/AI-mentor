@@ -12,6 +12,22 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 load_dotenv()
 
+
+def _print_mode_banner() -> None:
+    mock_llm = os.getenv("MOCK_LLM", "true")
+    mock_video = os.getenv("MOCK_VIDEO", "true")
+    replica = "SET" if os.getenv("TAVUS_AVATAR_ID", "").strip() else "EMPTY"
+    print("=" * 60)
+    if str(mock_video).lower() == "true":
+        print("  MOCK MODE - no Tavus / Sarvam spend")
+    else:
+        print("  LIVE TAVUS MODE - real minutes will be spent")
+    print(f"  MOCK_LLM={mock_llm}  MOCK_VIDEO={mock_video}  replica={replica}")
+    print("=" * 60)
+
+
+_print_mode_banner()
+
 Path("static_files").mkdir(exist_ok=True)
 
 app = FastAPI(title="AI Teacher")
@@ -70,9 +86,25 @@ def health():
     }
 
 
+def _fallback_reason() -> str | None:
+    from app.llm import LAST_TIER_USED
+
+    if os.getenv("FORCE_FALLBACK", "false").lower() == "true":
+        return "force_fallback"
+    if os.getenv("MOCK_LLM", "true").lower() == "true":
+        return "mock_llm"
+    if os.getenv("MOCK_VIDEO", "true").lower() == "true":
+        return "mock_video"
+    if not os.getenv("GEMINI_API_KEY", "").strip() and LAST_TIER_USED != "gemini":
+        return "missing_key"
+    if LAST_TIER_USED in ("local", "ollama", "claude", "none"):
+        return "tier_failed"
+    return None
+
+
 @app.get("/api/status")
 def get_status():
-    from app.llm import LAST_TIER_USED
+    from app.llm import API_KEY_VALID, LAST_TIER_USED, QUOTA_EXHAUSTED
 
     return {
         "status": "ok",
@@ -81,6 +113,12 @@ def get_status():
         "mock_video": os.getenv("MOCK_VIDEO", "true"),
         "force_fallback": os.getenv("FORCE_FALLBACK", "false"),
         "local_model": os.getenv("LOCAL_LLM_MODEL", "qwen2.5:7b"),
+        "api_key_present": bool(os.getenv("GEMINI_API_KEY", "").strip()),
+        "tavus_key_present": bool(os.getenv("TAVUS_API_KEY", "").strip()),
+        "sarvam_key_present": bool(os.getenv("SARVAM_API_KEY", "").strip()),
+        "api_key_valid": API_KEY_VALID,
+        "quota_exhausted": QUOTA_EXHAUSTED,
+        "fallback_reason": _fallback_reason(),
     }
 
 

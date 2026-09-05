@@ -10,7 +10,7 @@ const SVG_TYPES = new Set(["diagram", "graph", "timeline", "concept_map"]);
 
 function Typewriter({ text }: { text: string }) {
   return (
-    <p className="text-lg leading-relaxed text-white/90">
+    <p className="text-lg leading-relaxed text-[color:var(--ink)]">
       {text.split("").map((ch, i) => (
         <span
           key={`${ch}-${i}`}
@@ -40,11 +40,15 @@ function EquationView({ tex }: { tex: string }) {
   }, [clean]);
 
   if (!html) {
-    return <pre className="overflow-x-auto font-mono text-cyan-200">{clean}</pre>;
+    return (
+      <pre className="overflow-x-auto rounded-lg border border-[color:var(--hairline)] bg-[color-mix(in_srgb,var(--surface)_60%,transparent)] p-3 font-mono text-[color:var(--signal)]">
+        {clean}
+      </pre>
+    );
   }
   return (
     <div
-      className="overflow-x-auto text-white [&_.katex]:text-xl"
+      className="overflow-x-auto text-[color:var(--ink)] [&_.katex]:text-xl"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -56,10 +60,12 @@ function SvgPanel({ content }: { content: string }) {
     return <Typewriter text={content || "Visual unavailable — follow the narration below."} />;
   }
   return (
-    <div
-      className="rounded-xl bg-white p-3 text-black shadow-inner drop-shadow-lg"
-      dangerouslySetInnerHTML={{ __html: svgMatch[0] }}
-    />
+    <div className="overflow-hidden rounded-xl border border-[color:var(--hairline)] shadow-[0_0_24px_rgba(79,184,166,0.12)]">
+      <div
+        className="bg-white p-4 text-black"
+        dangerouslySetInnerHTML={{ __html: svgMatch[0] }}
+      />
+    </div>
   );
 }
 
@@ -81,27 +87,31 @@ export function VisualPanel({ turn }: { turn: TeachingTurn | null }) {
   let inner;
   if (!turn || type === "none" || !content.trim()) {
     inner = <Typewriter text={subtitleFallback} />;
+  } else if (content.includes("<svg")) {
+    inner = <SvgPanel content={content} />;
   } else if (type === "equation") {
     inner = <EquationView tex={content} />;
   } else if (type === "code" && code) {
     inner = (
       <div>
-        <span className="mb-2 inline-block rounded-full bg-cyan-400/20 px-3 py-1 text-xs uppercase tracking-widest text-cyan-200">
+        <span className="mb-2 inline-block rounded-full bg-[color:var(--signal-soft)] px-3 py-1 text-xs uppercase tracking-widest text-[color:var(--signal)]">
           {code.lang}
         </span>
-        <Highlight theme={themes.nightOwl} code={code.body.trim()} language={code.lang}>
-          {({ className, style, tokens, getLineProps, getTokenProps }) => (
-            <pre className={`${className} overflow-x-auto rounded-xl p-4 text-sm`} style={style}>
-              {tokens.map((line, i) => (
-                <div key={i} {...getLineProps({ line })}>
-                  {line.map((token, key) => (
-                    <span key={key} {...getTokenProps({ token })} />
-                  ))}
-                </div>
-              ))}
-            </pre>
-          )}
-        </Highlight>
+        <div className="overflow-hidden rounded-xl border border-[color:var(--hairline)]">
+          <Highlight theme={themes.nightOwl} code={code.body.trim()} language={code.lang}>
+            {({ className, style, tokens, getLineProps, getTokenProps }) => (
+              <pre className={`${className} overflow-x-auto p-4 text-sm`} style={style}>
+                {tokens.map((line, i) => (
+                  <div key={i} {...getLineProps({ line })}>
+                    {line.map((token, key) => (
+                      <span key={key} {...getTokenProps({ token })} />
+                    ))}
+                  </div>
+                ))}
+              </pre>
+            )}
+          </Highlight>
+        </div>
       </div>
     );
   } else if (SVG_TYPES.has(type) || content.includes("<svg")) {
@@ -112,7 +122,7 @@ export function VisualPanel({ turn }: { turn: TeachingTurn | null }) {
 
   return (
     <GlassCard className="flex h-full min-h-[320px] flex-col p-5" hover={false}>
-      <p className="mb-3 text-xs uppercase tracking-[0.22em] text-cyan-300">Visual panel</p>
+      <p className="mb-3 text-xs uppercase tracking-[0.22em] text-[color:var(--signal)]">Visual panel</p>
       <div className="flex-1">{inner}</div>
     </GlassCard>
   );

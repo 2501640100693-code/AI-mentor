@@ -74,6 +74,16 @@ export const mockApi = {
           concept_id: "ohms_law",
           expected_familiarity: "some",
         },
+        {
+          question: "What is electric current?",
+          concept_id: "current",
+          expected_familiarity: "no",
+        },
+        {
+          question: "What is voltage?",
+          concept_id: "voltage",
+          expected_familiarity: "no",
+        },
       ],
       lesson_plan: { ...MOCK_LESSON, topic },
     };
@@ -154,6 +164,23 @@ export const mockApi = {
       strong_areas: ["Ohm's Law"],
       weak_areas: ["Voltage"],
       recommendation: "Revisit voltage with a water-pressure analogy, then retry a short-answer check.",
+      incorrect_concepts: ["Voltage"],
+      suggested_next_topic: "Voltage — water-pressure analogy",
+      summary: "You are solid on Ohm's Law. Voltage still needs another pass before the next lesson.",
+    };
+  },
+
+  async submitDiagnosticAnswers(_payload: {
+    student_id: string;
+    lesson_id: string;
+    answers: Array<{ concept_id: string; student_answer: string; familiarity?: "known" | "unknown" | null }>;
+  }) {
+    return {
+      lesson_id: _payload.lesson_id,
+      updates: _payload.answers.map((a) => ({
+        concept_id: a.concept_id,
+        p_know: a.familiarity === "known" ? 0.6 : 0.2,
+      })),
     };
   },
 
@@ -220,6 +247,12 @@ export const mockApi = {
       mock_video: "true",
       force_fallback: "false",
       local_model: "qwen2.5:7b",
+      api_key_present: false,
+      tavus_key_present: false,
+      sarvam_key_present: false,
+      api_key_valid: null,
+      quota_exhausted: false,
+      fallback_reason: "mock_llm",
     };
   },
 

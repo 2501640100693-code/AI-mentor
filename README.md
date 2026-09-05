@@ -1,10 +1,12 @@
 # AI Teacher
 
-Turns an uploaded document or a topic into a personalized, adaptive, video-delivered lesson with a talking AI avatar, RAG grounding, misconception detection, BKT mastery tracking, multilingual TTS, and a subject-aware visual panel.
+I built this for the AI Innovation Hackathon 2026 (Bharat Academix). You pick a topic or upload notes, and I turn that into a lesson that talks back: a teacher avatar, speech, questions that adapt as you go, and a report at the end.
 
-## Architecture
+I wanted it to feel like sitting with someone who actually knows your notes, not a generic chatbot. If you upload a document, the explanations stay inside that material. If something is not in the upload, the teacher says so instead of making it up.
 
-Modular monolith: one FastAPI process. `brain/` and `video/` are packages that communicate via **function calls**, not HTTP. The only HTTP boundary is browser ↔ backend.
+## What I put together
+
+One FastAPI process on the backend. The `brain/` and `video/` packages call each other as functions — the browser is the only HTTP client.
 
 ```
 app/
@@ -15,19 +17,21 @@ app/
 frontend/          Next.js App Router + Three.js (R3F) + Framer Motion
 ```
 
-Screens: `/onboard` → `/upload` → `/lesson-plan` → `/player` → `/report` → `/flashcards` / `/concept-map`. The quiz lives inside `/player` when the teaching stage is `question`.
+The path I walk a student through is `/onboard` → `/upload` → `/lesson-plan` → `/player` → `/report`, then `/flashcards` or `/concept-map` if they want to review. The quiz is inside `/player` when the stage is `question`.
 
-## Prerequisites (Windows 11 native)
+Under the hood I track mastery with BKT, check claims against retrieved chunks, and speak with Sarvam (`speaker=shubh`). I did not change that voice.
+
+## What you need (Windows 11, no WSL)
 
 - Python 3.11 (`winget install Python.Python.3.11`)
 - Node.js LTS (`winget install OpenJS.NodeJS.LTS`)
 - Git
-- Tesseract OCR with Hindi (UB Mannheim installer). Set `TESSERACT_CMD` if not on PATH.
+- Tesseract OCR with Hindi (UB Mannheim installer). Set `TESSERACT_CMD` if it is not on PATH.
 - Ollama native installer + `ollama pull qwen2.5:7b`
 - Optional: Gemini, Tavus, Sarvam API keys
-- First `pip install` pulls PyTorch via `sentence-transformers` (large download; embeddings still run **CPU-only**)
+- First `pip install` pulls PyTorch via `sentence-transformers` (large download; embeddings still run on CPU only)
 
-## Local setup
+## How I run it locally
 
 ```powershell
 python -m venv .venv
@@ -41,7 +45,7 @@ npm install
 copy .env.local.example .env.local   # or create NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-Run two terminals:
+Two terminals:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
@@ -55,9 +59,11 @@ npm run dev
 
 ## Credentials
 
-Copy `.env.example` to `.env`. Gemini, Sarvam, and Tavus API keys go there. Live talking-replica video also needs `TAVUS_AVATAR_ID` (and optionally `TAVUS_PERSONA_ID` after the first CVI persona create). Anthropic is optional — omitted keys skip that LLM tier. Leave `MOCK_LLM=true` / `MOCK_VIDEO=true` until you want live Gemini/Tavus/Sarvam.
+Copy `.env.example` to `.env`. Gemini, Sarvam, and Tavus keys go there. Live replica video also needs `TAVUS_AVATAR_ID` (and optionally `TAVUS_PERSONA_ID` after the first CVI persona create). Anthropic is optional — if that key is missing I skip that LLM tier. Leave `MOCK_LLM=true` / `MOCK_VIDEO=true` until you want live Gemini/Tavus/Sarvam.
 
 ## Mock flags
+
+I default these on so a dry run does not spend API minutes.
 
 | Flag | Default | Effect |
 |---|---|---|
@@ -65,41 +71,41 @@ Copy `.env.example` to `.env`. Gemini, Sarvam, and Tavus API keys go there. Live
 | `MOCK_VIDEO=true` | on | avatar/TTS return canned data |
 | `FORCE_FALLBACK=true` | off | skip cloud, local TTS + loop clips |
 
-## Prompt & agent chain
+## How a lesson is built
 
-1. Diagnostic questions → initial `p_know`
-2. Concept DAG + cycle check + fallback list
-3. Teaching turns (Understand → Adapt), RAG-grounded vs topic-only
-4. Visual generation (SVG / LaTeX / code)
-5. Answer grading (MCQ exact match, free-text LLM rubric)
-6. Misconception diagnosis (cosine ≥ 0.70)
+1. Diagnostic questions, then an initial `p_know`
+2. Concept DAG, cycle check, fallback list if the graph is messy
+3. Teaching turns (Understand → Adapt), grounded in the upload when there is one
+4. Visuals (SVG / LaTeX / code) when they help
+5. Grading (MCQ exact match, free-text rubric)
+6. Misconception check (cosine ≥ 0.70)
 7. Hallucination check against retrieved chunks
 8. Report card from BKT `p_know`
 
-## Third-party services
+## Services I wired in
 
 - LLM: Gemini (`GEMINI_MODEL`, default `gemini-3.5-flash-lite`), Ollama local, optional Claude
-- Embeddings: sentence-transformers all-MiniLM-L6-v2 **CPU only**
-- Vector DB: ChromaDB local
+- Embeddings: sentence-transformers all-MiniLM-L6-v2, CPU only
+- Vector DB: ChromaDB on disk
 - Avatar: Tavus `/v2/videos` + CVI echo persona → conversation
 - TTS: Sarvam (`speaker=shubh`) → Piper → pyttsx3
 - OCR: pytesseract + Tesseract (`eng`/`hin`)
 
 ## Deployment
 
-**Render (backend):** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Copy every `.env.example` key into the dashboard. Set `MOCK_LLM=false`, `MOCK_VIDEO=false`. Free tier has **no persistent disk** — SQLite and Chroma wipe on restart.
+**Render (backend):** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Copy every `.env.example` key into the dashboard. Set `MOCK_LLM=false`, `MOCK_VIDEO=false` for a live demo. Free tier has no persistent disk — SQLite and Chroma wipe on restart.
 
-**Vercel (frontend):** `cd frontend; vercel --prod`. Set `NEXT_PUBLIC_API_URL` to the Render URL, then set Render `FRONTEND_URL` to the Vercel URL and redeploy (CORS both directions).
+**Vercel (frontend):** `cd frontend; vercel --prod`. Set `NEXT_PUBLIC_API_URL` to the Render URL, then set Render `FRONTEND_URL` to the Vercel URL and redeploy so CORS works both ways.
 
-**Pre-demo:**
+**Before a demo:**
 
-1. `Invoke-RestMethod https://your-app.onrender.com/health` (wake cold start)
-2. Wait ~60s
+1. `Invoke-RestMethod https://your-app.onrender.com/health` (wake a cold start)
+2. Wait about 60 seconds
 3. `python scripts/warm_up_demo.py --url https://your-app.onrender.com`
 
-## Known limitations
+## Things I know are still limited
 
-- Misconception bank is deep for electricity / Ohm's Law; other topics use live LLM-generated entries.
+- The misconception bank is deep for electricity / Ohm's Law; other topics get live LLM entries.
 - PARTIALLY_CORRECT answers count as incorrect for BKT (binary observation).
 - `gemini-2.5-flash-lite` is unavailable to new Gemini keys; this repo defaults to `gemini-3.5-flash-lite` via `GEMINI_MODEL`.
 - Render free disk is ephemeral.

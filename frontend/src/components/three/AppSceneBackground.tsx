@@ -33,7 +33,7 @@ function FloatingParticles() {
       </bufferGeometry>
       <pointsMaterial
         size={0.035}
-        color="#00d4ff"
+        color="#D9A441"
         transparent
         opacity={0.7}
         sizeAttenuation
@@ -55,7 +55,7 @@ function HeroMesh() {
       <mesh ref={mesh} position={[3.2, 0.4, -2]}>
         <icosahedronGeometry args={[1.15, 1]} />
         <MeshDistortMaterial
-          color="#a78bfa"
+          color="#D9A441"
           wireframe
           distort={0.25}
           speed={1.4}
@@ -84,8 +84,8 @@ export default function AppSceneBackground({
         gl={{ antialias: true, alpha: true }}
       >
         <ambientLight intensity={0.45} />
-        <pointLight position={[4, 6, 8]} intensity={18} color="#00d4ff" />
-        <pointLight position={[-6, -2, 4]} intensity={10} color="#a78bfa" />
+        <pointLight position={[4, 6, 8]} intensity={14} color="#D9A441" />
+        <pointLight position={[-6, -2, 4]} intensity={8} color="#E8BE6E" />
         <Stars radius={60} depth={40} count={1200} factor={3} fade speed={0.4} />
         <FloatingParticles />
         {!isHomePage && <HeroMesh />}
@@ -93,4 +93,3 @@ export default function AppSceneBackground({
     </div>
   );
 }
-

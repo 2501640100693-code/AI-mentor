@@ -6,6 +6,7 @@ import { GlowButton } from "@/components/ui/GlowButton";
 import { PageShell } from "@/components/ui/PageShell";
 import { useApp } from "@/contexts/AppContext";
 import { api } from "@/lib/api";
+import { humanError } from "@/lib/errors";
 import type { Flashcard } from "@/lib/types";
 
 export default function FlashcardsPage() {
@@ -13,9 +14,16 @@ export default function FlashcardsPage() {
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    api.flashcards(studentId, lessonId).then(setCards);
+    api
+      .flashcards(studentId, lessonId)
+      .then((next) => {
+        setCards(next);
+        setError("");
+      })
+      .catch((err) => setError(humanError(err, "Could not load flashcards.")));
   }, [studentId, lessonId]);
 
   const card = cards[index];
@@ -51,7 +59,7 @@ export default function FlashcardsPage() {
               </motion.div>
             </motion.button>
           ) : (
-            <p className="text-white/60">Loading cards…</p>
+            <p className="text-white/60">{error ? "No cards to show." : "Loading cards…"}</p>
           )}
         </AnimatePresence>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -68,8 +76,9 @@ export default function FlashcardsPage() {
             Review again
           </GlowButton>
         </div>
+        {error ? <p className="mt-4 text-center text-sm text-[color:var(--ember)]">{error}</p> : null}
         <p className="mt-4 text-center text-xs uppercase tracking-widest text-white/50">
-          {cards.length ? `${index + 1} / ${cards.length}` : "no cards yet"}
+          {cards.length ? `${index + 1} / ${cards.length}` : error ? "could not load cards" : "no cards yet"}
         </p>
       </div>
     </PageShell>

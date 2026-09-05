@@ -21,7 +21,7 @@ export function GlowButton({
   const palette =
     variant === "teal"
       ? "rounded-xl bg-gradient-to-r from-[#0e8f6e] to-[#10CD98] font-semibold text-white shadow-[0_0_24px_rgba(16,205,152,0.35)]"
-      : "rounded-full bg-gradient-to-r from-cyan-400 to-violet-400 font-semibold text-[#0f0c29] shadow-[0_0_24px_rgba(0,212,255,0.45)]";
+      : "rounded-full bg-gradient-to-r from-[#D9A441] to-[#E8BE6E] font-semibold text-[#221503] shadow-[0_0_24px_rgba(217,164,65,0.45)]";
 
   return (
     <motion.button

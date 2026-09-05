@@ -127,6 +127,9 @@ class ReportCard(BaseModel):
     strong_areas: list[str]
     weak_areas: list[str]
     recommendation: str
+    incorrect_concepts: list[str] = []
+    suggested_next_topic: str = ""
+    summary: str = ""
 
 
 class DaySchedule(BaseModel):

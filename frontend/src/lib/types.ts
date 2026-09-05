@@ -99,6 +99,16 @@ export type ReportCard = {
   strong_areas: string[];
   weak_areas: string[];
   recommendation: string;
+  incorrect_concepts?: string[];
+  suggested_next_topic?: string;
+  summary?: string;
+};
+
+export type DiagnosticQuestion = {
+  question: string;
+  concept_id: string;
+  expected_answer_key?: string;
+  expected_familiarity?: string;
 };
 
 export type Flashcard = {
@@ -125,4 +135,10 @@ export type StatusPayload = {
   mock_video: string;
   force_fallback: string;
   local_model: string;
+  api_key_present?: boolean;
+  tavus_key_present?: boolean;
+  sarvam_key_present?: boolean;
+  api_key_valid?: boolean | null;
+  quota_exhausted?: boolean;
+  fallback_reason?: string | null;
 };

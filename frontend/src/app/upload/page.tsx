@@ -246,7 +246,7 @@ export default function UploadPage() {
       </div>
       <form onSubmit={onSubmit} className="grid gap-6 md:grid-cols-2">
         <ThemedCard className="p-6" highlighted={drag}>
-          <div className="h-40">
+          <div className="h-40 overflow-hidden pointer-events-none">
             <FloatingIcon3D kind="doc" />
           </div>
           <label

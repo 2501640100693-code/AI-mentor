@@ -1,6 +1,5 @@
 # AI Teacher
-
-I built this for the AI Innovation Hackathon 2026 (Bharat Academix). You pick a topic or upload notes, and I turn that into a lesson that talks back: a teacher avatar, speech, questions that adapt as you go, and a report at the end.
+ You pick a topic or upload notes, and I turn that into a lesson that talks back: a teacher avatar, speech, questions that adapt as you go, and a report at the end.
 
 I wanted it to feel like sitting with someone who actually knows your notes, not a generic chatbot. If you upload a document, the explanations stay inside that material. If something is not in the upload, the teacher says so instead of making it up.
 
